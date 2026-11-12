@@ -1,0 +1,1857 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>房间的混响时间 · 混响、驻波与要贴多少吸声材料</title>
+<meta name="description" content="填房间长宽高与六个面的材料，算各频段混响时间、低频驻波堆在哪些频率上、要补多少等效吸声量才能压到目标值。">
+<style>
+:root{
+  --ink:#12303a; --ink2:#3f5b66; --ink3:#6d8590; --line:#d7e2e6;
+  --paper:#f4f1e9; --card:#ffffffee; --teal:#0f6a72; --teal-d:#0b4f56; --orange:#b8560f;
+  --warnbg:#fdf3e6; --okbg:#eef6f1; --rad:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper); color:var(--ink);
+  font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:18px 14px 64px}
+header.top{border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:14px}
+h1{font-size:23px;line-height:1.3;margin:0 0 6px;letter-spacing:.3px}
+.sub{color:var(--ink2);font-size:13.5px}
+.sub b{color:var(--teal-d)}
+.tagline{margin-top:8px;font-size:13px;color:var(--ink3)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--rad);padding:14px;min-width:0}
+.card h2{font-size:14px;margin:0 0 10px;letter-spacing:.5px;color:var(--ink2);font-weight:700;display:flex;align-items:center;gap:8px}
+.card h2 .n{display:inline-flex;width:18px;height:18px;border-radius:50%;background:var(--ink);color:#fff;
+  font-size:11px;align-items:center;justify-content:center;flex:0 0 auto}
+.field{margin-bottom:11px}
+.field label{display:block;font-size:12.5px;color:var(--ink2);margin-bottom:4px}
+.field .hint{font-size:11.5px;color:var(--ink3);margin-top:3px;line-height:1.45}
+input[type=number],input[type=text],select{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:7px;
+  font:inherit;font-size:14px;background:#fff;color:var(--ink)}
+input[type=number]:focus,input[type=text]:focus,select:focus{outline:2px solid #0f6a7233;border-color:var(--teal)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.btnrow{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+button{font:inherit;font-size:13px;padding:7px 11px;border-radius:7px;border:1px solid var(--line);
+  background:#fff;color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--teal);color:var(--teal-d)}
+button.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+button.primary:hover{background:var(--teal-d);color:#fff}
+button.sm{font-size:12px;padding:5px 9px}
+.err{background:#fdecec;border:1px solid #e8b4b4;color:#8d1f1f;border-radius:8px;padding:9px 11px;margin-bottom:11px;font-size:13px}
+.err ul{margin:5px 0 0;padding-left:18px}
+.hidden{display:none !important}
+.only-sm{display:none}
+.muted{color:var(--ink3)}
+.warn{color:#8a3f14}
+.strong{font-weight:700}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.nm{white-space:nowrap}
+.nm2{white-space:normal}
+
+/* 步骤条 */
+#steps{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+#steps button{background:#fff}
+#steps button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+
+/* 场景 */
+.scen{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+
+/* 结论票 */
+.ticket{background:linear-gradient(180deg,#0f6a72,#0b4f56);color:#fff;border-radius:var(--rad);padding:15px 16px;
+  display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between}
+.ticket .bigcap{font-size:12.5px;opacity:.85;margin-bottom:2px}
+.ticket .big{font-size:54px;line-height:1.05;font-weight:800;letter-spacing:-1.5px}
+.ticket .side{font-size:13px;opacity:.95;text-align:right;line-height:1.75}
+.ticket .side b{font-size:15px}
+.pill{display:inline-block;padding:1px 9px;border-radius:20px;font-size:12.5px;font-weight:700;vertical-align:2px}
+.pill.v-draggy{background:#f6c9a8;color:#6b2f05}
+.pill.v-near{background:#f3e2b0;color:#6b5305}
+.pill.v-dry{background:#bfe3cd;color:#1d5c38}
+.oneliner{background:#fff;border:1px solid var(--line);border-top:none;border-radius:0 0 var(--rad) var(--rad);
+  padding:10px 14px;font-size:13.5px;color:var(--ink2);margin-bottom:14px}
+.oneliner b{color:var(--orange)}
+
+/* 累积条 */
+.bar{width:120px}
+.bar span{display:block;height:9px;border-radius:5px;background:var(--teal);min-width:1px}
+.pbar{height:12px;border-radius:7px;background:#e6e2d8;overflow:hidden;margin:7px 0 4px}
+.pbar span{display:block;height:100%;background:linear-gradient(90deg,#0f6a72,#3f9aa2);width:0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:13px}
+.kv .k{color:var(--ink3)}
+.kv .v{text-align:right;font-variant-numeric:tabular-nums}
+.big2{font-size:26px;font-weight:800;color:var(--teal-d);font-variant-numeric:tabular-nums}
+.mini{font-size:12.5px;color:var(--ink3);line-height:1.55}
+.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:8px;max-width:100%;min-width:0}
+table{border-collapse:collapse;width:100%;min-width:max-content;font-size:13.5px;font-variant-numeric:tabular-nums}
+table.fit{min-width:0}
+th,td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{background:#f0ede4;color:var(--ink2);font-weight:600;font-size:12.5px}
+tbody tr:nth-child(even){background:#fbfaf6}
+tr.sumrow td{background:#eef2f1 !important;font-weight:600}
+tr.now td{background:#e8f2f2 !important;box-shadow:inset 3px 0 0 var(--orange)}
+td.bar{padding:4px 9px}
+td.bar span{display:block;height:9px;border-radius:5px;background:#7fb3ba;min-width:1px}
+.notes{list-style:none;padding:0;margin:0;font-size:12.5px}
+.notes li{padding:6px 9px;border-radius:7px;margin-bottom:5px;background:#f7f7f4;border:1px solid var(--line);color:var(--ink2)}
+.notes li.warn{background:var(--warnbg);border-color:#eccfa8;color:#7a3d09}
+.checks{display:grid;grid-template-columns:1fr;gap:3px;font-size:12.5px}
+.checks .c{display:flex;gap:7px;align-items:flex-start}
+.checks .m{flex:0 0 auto;width:15px;height:15px;border-radius:50%;font-size:10px;color:#fff;display:flex;
+  align-items:center;justify-content:center;margin-top:3px}
+.checks .m.p{background:#2b7a52}.checks .m.f{background:#b03030}
+.checks .dt{color:var(--ink3);font-variant-numeric:tabular-nums}
+footer.bound{margin-top:18px;border-top:1px solid var(--line);padding-top:12px;font-size:12.5px;color:var(--ink3);line-height:1.75}
+footer.bound b{color:var(--ink2)}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.grid2>*{min-width:0}
+.mtgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.mtbox{border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:#fbfaf6}
+.mtbox .cap{font-size:11.5px;color:var(--ink3)}
+.mtbox .val{font-size:20px;font-weight:800;color:var(--teal-d);font-variant-numeric:tabular-nums;margin:2px 0}
+.mtbox .ex{font-size:11.5px;color:var(--ink3);line-height:1.5}
+@media (max-width:900px){
+  .grid2{grid-template-columns:1fr}
+  h1{font-size:20px}
+  .ticket .big{font-size:44px}
+  .ticket .side{text-align:left}
+}
+@media (max-width:640px){
+  .row3{grid-template-columns:1fr 1fr}
+}
+@media (max-width:520px){
+  /* 窄屏优先保住结论列：把「总吸声量 / 平均吸声系数 / cos / 独立吸声体之外的列」收进
+     —— 这些量在 CSV 与 Markdown 导出里都有，不留在这里也不丢信息。
+     收起后表格宽度落回可用宽度内，不必再靠横向滚动，结论列永远在第一屏。 */
+  table.fit th.opt, table.fit td.opt{display:none}
+  .hide-sm{display:none}
+  .only-sm{display:inline}
+  table.fit{min-width:0;width:100%}
+  table.fit th, table.fit td{padding:5px 5px;font-size:12.5px}
+}
+@media (max-width:420px){
+  .wrap{padding:12px 9px 56px}
+  .ticket{padding:12px}
+  .ticket .big{font-size:38px}
+  .row2,.row3{grid-template-columns:1fr}
+  table{font-size:12.5px}
+  th,td{padding:5px 6px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>房间的混响时间</h1>
+    <div class="sub">在屋里录一段话、摆一对音箱，总觉得声音拖、低频嗡嗡的 —— 这不是耳朵的问题，是<b>房间</b>的问题。
+      填房间尺寸和六个面的材料，算清三件事：<b>它把声音拖多久</b>（各频段混响时间）、<b>低频堆在哪些频率上</b>（驻波）、<b>要补多少吸声材料</b>才压得到目标。</div>
+    <div class="tagline">全部由你填的数字算出来：不联网、不测声、不内置任何产品参数、不评价任何器材、不给选购建议。材料吸声系数是<b>公开资料的典型参考值</b>且可逐项改写；默认场景是<b>虚构示例</b>。</div>
+  </header>
+
+  <div id="errbox" class="err hidden" role="alert"></div>
+  <div class="scen" id="scen"></div>
+
+  <div id="steps">
+    <button data-v="inputs" class="on">1 · 房间</button>
+    <button data-v="materials">2 · 六个面的材料</button>
+    <button data-v="extras">3 · 家具 / 吸声板（可选）</button>
+  </div>
+
+  <!-- ═══ 第 1 步：房间 ═══ -->
+  <section id="step-inputs">
+    <div class="card">
+      <h2><span class="n">1</span>房间与目标</h2>
+      <div class="row3">
+        <div class="field">
+          <label for="p-L">长（m）</label>
+          <input type="number" id="p-L" step="any" min="1.5" max="30">
+        </div>
+        <div class="field">
+          <label for="p-W">宽（m）</label>
+          <input type="number" id="p-W" step="any" min="1.5" max="30">
+        </div>
+        <div class="field">
+          <label for="p-H">高（m）</label>
+          <input type="number" id="p-H" step="any" min="1.5" max="12">
+        </div>
+      </div>
+      <div class="field">
+        <label for="p-target">目标混响时间（s）</label>
+        <input type="number" id="p-target" step="any" min="0.1" max="2">
+        <div class="hint">这是<b>你自己定的目标</b>，本页不宣称任何标准值。参考量级：小录音间常在 0.2–0.4 s，客厅常在 0.4–0.6 s —— 但这只是常见做法，不是标准。</div>
+      </div>
+      <div class="field">
+        <label for="p-spk">音箱到听音位的距离（m）</label>
+        <input type="number" id="p-spk" step="any" min="0.3" max="10">
+        <div class="hint">只用来算等边三角形的音箱间距（×√3）与和临界距离作对照，<b>不是摆位建议</b>。</div>
+      </div>
+      <div class="btnrow"><button class="primary" id="b-next1">下一步：填六个面的材料</button></div>
+    </div>
+  </section>
+
+  <!-- ═══ 第 2 步：材料 ═══ -->
+  <section id="step-materials" class="hidden">
+    <div class="card">
+      <h2><span class="n">2</span>六个面各是什么材料</h2>
+      <div class="tblwrap"><table id="mat-tbl" class="fit">
+        <thead><tr><th>面</th><th>材料</th><th>面积 m²</th><th>500 Hz 系数</th><th>吸声量 m²</th></tr></thead>
+        <tbody id="mat-body"></tbody>
+      </table></div>
+      <div class="mini" id="custom-note" style="margin-top:7px">
+        你选了「自定义吸声系数」—— 那六个数值在下面的「高级」里改；那是你自己填的值，本页不背书。
+      </div>
+      <div class="pbar"><span id="mat-bar"></span></div>
+      <div class="mini" id="mat-bar-txt">—</div>
+      <div class="kv" style="margin-top:9px">
+        <div class="k">当前总吸声量（500 Hz）</div><div class="v strong" id="mat-total">—</div>
+        <div class="k">达到目标需要的吸声量</div><div class="v" id="mat-target">—</div>
+        <div class="k">还差</div><div class="v strong" id="mat-gap">—</div>
+        <div class="k">当前 500 Hz 混响时间</div><div class="v strong" id="mat-rt">—</div>
+      </div>
+      <div class="btnrow">
+        <button id="b-back2">上一步</button>
+        <button class="primary" id="b-next2">下一步：家具与吸声板</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 第 3 步：家具与吸声板 ═══ -->
+  <section id="step-extras" class="hidden">
+    <div class="grid2">
+      <div class="card">
+        <h2><span class="n">3a</span>地面/靠墙的大件软装</h2>
+        <div class="tblwrap"><table id="furn" class="fit">
+          <thead><tr><th>名称</th><th>按什么材料算</th><th>等效面积 m²</th><th></th></tr></thead>
+          <tbody id="furn-body"></tbody>
+        </table></div>
+        <div class="mini" id="f-empty" style="margin-top:6px">还没有软装 —— 硬装房间里家具其实是很主要的吸声体，别漏掉。</div>
+        <div class="mini" style="margin-top:6px">口径：<b>等效吸声 = 等效面积 × 该材料系数</b>。「等效面积」填你估计的<b>受声投影面积</b>（例如沙发朝房间那一面），不是体积。</div>
+        <div class="kv" style="margin-top:9px"><div class="k">软装合计吸声量（500 Hz）</div><div class="v strong" id="fu-total">—</div></div>
+        <div class="btnrow"><button class="sm" id="b-add">加一件</button></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">3b</span>吸声板</h2>
+        <div class="row3">
+          <div class="field">
+            <label for="p-panel">面积（m²）</label>
+            <input type="number" id="p-panel" step="any" min="0" max="200">
+          </div>
+          <div class="field">
+            <label for="p-pmat">什么板</label>
+            <select id="p-pmat"></select>
+          </div>
+          <div class="field">
+            <label for="p-psurf">装在哪一面</label>
+            <select id="p-psurf"></select>
+          </div>
+        </div>
+        <div class="mini" id="pa-hint"></div>
+        <div class="kv" style="margin-top:9px"><div class="k">吸声板贡献（500 Hz）</div><div class="v strong" id="pa-total">—</div></div>
+        <div class="field" style="margin-top:11px">
+          <label>听音位（留空 = 房间中心）</label>
+          <div class="row2">
+            <input type="number" id="p-ll" step="any" min="0" placeholder="距长边起算墙 m">
+            <input type="number" id="p-lw" step="any" min="0" placeholder="距短边起算墙 m">
+          </div>
+          <div class="hint">用来判断听音位落在第 1 阶驻波的压力腹点还是节点上。</div>
+        </div>
+        <div class="btnrow">
+          <button id="b-back3">上一步</button>
+          <button class="primary" id="b-see">看结果</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2><span class="n">3c</span>高级：自定义吸声系数（六段，0–1）</h2>
+      <div class="mini" style="margin-bottom:7px">只有在材料里选了「自定义」时才生效。想用自己查到的数值算，就填在这里 —— 本页不核对、不背书。</div>
+      <div class="tblwrap"><table class="fit">
+        <thead><tr><th>125 Hz</th><th>250 Hz</th><th>500 Hz</th><th>1 kHz</th><th>2 kHz</th><th>4 kHz</th></tr></thead>
+        <tbody><tr>
+          <td><input class="c-band" type="number" step="any" min="0" max="1"></td>
+          <td><input class="c-band" type="number" step="any" min="0" max="1"></td>
+          <td><input class="c-band" type="number" step="any" min="0" max="1"></td>
+          <td><input class="c-band" type="number" step="any" min="0" max="1"></td>
+          <td><input class="c-band" type="number" step="any" min="0" max="1"></td>
+          <td><input class="c-band" type="number" step="any" min="0" max="1"></td>
+        </tr></tbody>
+      </table></div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2><span class="n">3d</span>存、换、导出</h2>
+      <div class="btnrow">
+        <button class="primary" id="b-save">保存到本机</button>
+        <button id="b-reset">恢复默认</button>
+        <button id="b-import">导入备份</button>
+        <input type="file" id="f-import" accept=".json,application/json" class="hidden">
+      </div>
+      <div class="btnrow">
+        <button class="sm" id="b-csv">下载 CSV</button>
+        <button class="sm" id="b-md">下载 Markdown</button>
+        <button class="sm" id="b-json">导出 JSON 备份</button>
+        <button class="sm" id="b-png">下载结果卡 PNG</button>
+      </div>
+      <div class="hint" id="saveinfo" style="margin-top:7px"></div>
+    </div>
+  </section>
+
+  <!-- ═══ 结果：房间声学体检报告 ═══ -->
+  <div id="results" class="hidden" style="margin-top:16px">
+    <div class="ticket" id="ticket">
+      <div>
+        <div class="bigcap">500 Hz 混响时间</div>
+        <div class="big"><span id="t-rt">—</span> <span style="font-size:22px;font-weight:600">s</span></div>
+      </div>
+      <div class="side">
+        <div>判定：<span class="pill" id="t-verdict">—</span>（本页的显示分组，不是标准）</div>
+        <div>目标 <b id="t-target">—</b> · 还差 <b id="t-need">—</b></div>
+        <div>房间 <b id="t-dims">—</b> · <b id="t-volume">—</b> · 吸声量 <b id="t-abs">—</b></div>
+      </div>
+    </div>
+    <div class="oneliner" id="t-line">—</div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2><span class="n">A</span>六段混响时间</h2>
+        <div class="tblwrap"><table id="t-band" class="fit">
+          <thead><tr><th>频段</th><th>混响时间</th><th class="opt">总吸声量 m²</th><th class="opt">平均吸声系数</th><th>相对长度</th></tr></thead>
+          <tbody id="band-body"></tbody>
+        </table></div>
+        <div class="mini" style="margin-top:7px">条形长度只是六段之间的相对比例（最长的记满格），不代表绝对好坏。</div>
+      </div>
+      <div class="card">
+        <h2><span class="n">B</span>单点指标</h2>
+        <div class="mtgrid">
+          <div class="mtbox"><div class="cap">Schroeder 频率</div><div class="val" id="mt-sch">—</div><div class="ex" id="mt-sch-note">—</div></div>
+          <div class="mtbox"><div class="cap">它以下的模态总数（Weyl 口径）</div><div class="val" id="mt-count">—</div><div class="ex" id="mt-count-note">—</div></div>
+          <div class="mtbox"><div class="cap">临界距离</div><div class="val" id="mt-cd">—</div><div class="ex" id="mt-cd-note">—</div></div>
+          <div class="mtbox"><div class="cap">内表面积 / 棱长合计</div><div class="val"><span id="mt-surface">—</span></div><div class="ex">棱长合计 <span id="mt-edge">—</span>（Weyl 公式用）</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2><span class="n">C</span>低频堆在哪儿：驻波清单与频率尺</h2>
+      <div id="mode-ruler"></div>
+      <div class="kv" style="margin-top:6px">
+        <div class="k">≤300 Hz 的轴向模式</div><div class="v strong" id="mode-count">—</div>
+        <div class="k">最低一阶</div><div class="v" id="mode-first">—</div>
+        <div class="k">50–120 Hz 内的空档（间距 ≥ 12 Hz）</div><div class="v strong" id="gap-count">—</div>
+      </div>
+      <div class="mini" id="gap-list" style="margin-top:6px"></div>
+      <div class="tblwrap" style="margin-top:10px;max-height:340px;overflow-y:auto"><table id="t-mode" class="fit">
+        <thead><tr><th>频率 Hz</th><th>同一频率上有几条</th><th class="opt">参与方向数</th><th class="opt">对应的下标 nx,ny,nz</th></tr></thead>
+        <tbody id="mode-body"></tbody>
+      </table></div>
+      <div class="mini" style="margin-top:7px">只列<b>轴向</b>模式（下标里只有一个非零），不算切向/斜向。同一张表按<b>频率</b>归并：一个频率一行，括号里列出所有落到这个频率上的下标组合。频率尺上柱高 = 同一频率上有几条模式、橙色 = 三个方向同时参与。空档阈值 12 Hz 与 50–120 Hz 这个范围都是<b>本页的设计选择</b>，不是标准。</div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2><span class="n">D</span>听音位落在腹点还是节点</h2>
+      <div class="tblwrap"><table id="t-lm" class="fit">
+        <thead><tr><th>方向</th><th>第 1 阶频率 Hz</th><th>听音位距起算墙 m</th><th class="opt">cos(πx/L)</th><th>判定</th></tr></thead>
+        <tbody id="lm-body"></tbody>
+      </table></div>
+      <div class="kv" style="margin-top:8px">
+        <div class="k">长边方向坐标</div><div class="v" id="lm-x">—</div>
+        <div class="k">短边方向坐标</div><div class="v" id="lm-y">—</div>
+      </div>
+      <div class="mini" id="lm-note" style="margin-top:6px"></div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2><span class="n">E</span>处方：要补多少吸声量、等于多少 m²</h2>
+      <div class="kv">
+        <div class="k">目标混响时间</div><div class="v strong" id="pl-target">—</div>
+        <div class="k">目标吸声量 A = 0.161·V / RT60</div><div class="v" id="pl-atarget">—</div>
+        <div class="k">当前吸声量（500 Hz）</div><div class="v" id="pl-acur">—</div>
+        <div class="k">还需补的等效吸声量</div><div class="v strong" id="pl-need">—</div>
+      </div>
+      <div class="tblwrap" style="margin-top:10px"><table id="t-plan" class="fit">
+        <thead><tr><th>做法</th><th>需要多少</th><th>说明</th><th></th></tr></thead>
+        <tbody id="plan-body"></tbody>
+      </table></div>
+      <div class="mini" style="margin-top:7px">点「代入」会把这笔面积填进第 3 步的吸声板里并立刻重算 —— 建议直接作用于输入。
+        「直接加板」按<b>独立加进来的吸声体</b>算（面积 = 缺口 ÷ 该材料 500 Hz 系数）；「贴到某个面」按<b>替换该面原有材料</b>算（面积 = 缺口 ÷ 系数提高量），后者需要的面积往往更大。</div>
+
+      <div style="margin-top:12px">
+        <div class="mini strong" style="margin-bottom:6px">各种材料要多少 m² 才补得上这个缺口（500 Hz）</div>
+        <div class="tblwrap"><table id="t-presc" class="fit">
+          <thead><tr><th>材料</th><th>500 Hz 系数</th><th><span class="hide-sm">当独立吸声体：面积</span><span class="only-sm">独立 m²</span></th><th><span class="hide-sm">贴到长边墙（替换原面材料）：面积</span><span class="only-sm">贴墙 m²</span></th></tr></thead>
+          <tbody id="presc-body"></tbody>
+        </table></div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="mini strong" style="margin-bottom:6px">对照：如果整间房六个面都用同一种吸声处理（不是推荐，只是把量级摆出来）</div>
+        <div class="tblwrap"><table id="t-uniform" class="fit">
+          <thead><tr><th>材料</th><th>500 Hz 系数</th><th>总吸声量 m²</th><th>混响时间</th></tr></thead>
+          <tbody id="uniform-body"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2><span class="n">F</span>模型提示与自检</h2>
+      <ul class="notes">
+        <li><b>这是模型输出，不是实测。</b>Sabine 公式假设声场扩散、各面吸声均匀；小房间、强吸收、低频下这几条都不严格成立。</li>
+        <li><b>吸声系数是参考值。</b>同一种「地毯」「吸声板」在厚度、衬垫、空腔、安装方式不同时差别可以很大；表里给的是公开资料的典型值，你可以逐项改（第 2 步的「自定义」）。</li>
+        <li class="warn"><b>墙面面积按净空几何算</b>（2(L+W)H），<b>没有</b>扣掉门窗洞；吸声板也<b>没有</b>扣掉被它遮住的那部分墙面原本的吸声量 —— 两处都是保守口径。</li>
+        <li><b>六个面都是长方体</b>：L 形、斜顶、圆柱形房间不在范围内，本页不猜。</li>
+        <li><b>声速取 343 m/s</b>（20 °C 空气中的常用值）；温度未建模。高频只加了很小的空气吸收项。</li>
+        <li><b>只算房间，不算器材</b>：没有音箱的频响/灵敏度/功率数据，所以本页不预测声压级，也不说「你的音箱低频能下到多少」。</li>
+        <li><b>不做隔声</b>：邻居吵不吵你、你吵不吵邻居，要靠墙体隔声量、撞击声、缝隙漏声这些数据，本页完全不涉及。</li>
+        <li><b>不做健康与法律判定</b>，也不评价任何品牌、不给购买建议。驻波在物理上消不掉，只能分散与吸收 —— 这一点页面上不会替你下结论说「处理完就好了」。</li>
+      </ul>
+      <div style="margin-top:9px;font-size:12.5px;color:var(--ink2)" id="sc-head">—</div>
+      <div class="checks" id="sc-body" style="margin-top:7px"></div>
+    </div>
+  </div>
+
+  <div class="mini" id="meta-line" style="margin-top:12px"></div>
+
+  <footer class="bound">
+    <b>公式（与页面数字同一套）</b>：V = L·W·H；A<sub>频段</sub> = Σ(每个面面积 × 该面材料在该频段的吸声系数) + 家具等效吸声 + 吸声板；
+    <b>RT60 = 0.161·V / (A + 4mV)</b>（m 为空气吸收系数，只有 2k/4k 段非零）；
+    驻波 <b>f = (343/2)·√((n<sub>x</sub>/L)² + (n<sub>y</sub>/W)² + (n<sub>z</sub>/H)²)</b>；
+    Schroeder 频率 <b>2000·√(RT60<sub>500</sub>/V)</b>；临界距离 <b>0.141·√(Q·A)</b>（Q = 1）；
+    目标吸声量 <b>A = 0.161·V / RT60<sub>目标</sub></b>。<br>
+    <b>本页不包含</b>：实测与校准、房间校正 EQ、音箱与功放的任何参数、扩散体设计、隔声（墙体/撞击声/缝隙）、
+    结构振动与空调噪声、温度湿度对声速的影响、听感与音质评价、任何产品与品牌、任何标准条款的引用。<br>
+    <b>本页不做</b>：不推荐器材、不给购买链接、不评价任何装修方案好坏、不做医学或健康判定。
+    所有默认数字与内置场景都是<b>虚构示例</b>，不代表任何真实房间、材料产品或器材。
+  </footer>
+</div>
+
+<script>
+/* 房间的混响时间 · 核心引擎（纯函数，浏览器与 node 通用）
+ *
+ * 一句话：把房间的长宽高和六个面的材料填进去，算出这个房间会把声音拖多久（各频段混响时间）、
+ *         低频在哪些频率上堆起来（驻波）、要贴多少吸声材料才能把混响压到目标值。
+ *
+ * 口径与假设全部写在页面上（也在 需求与调研.md §3 里）：本引擎不联网、不内置任何产品参数、
+ * 不评价任何器材、不给选购建议、不做医学判定。所有数字都由输入与下面的公式算出来。
+ *
+ * 公式（与页面数字同一套）：
+ *   V          = L·W·H
+ *   A_band     = Σ(面面积 × 该面材料在该频段的吸声系数) + 家具等效吸声 + 吸声板
+ *   RT60_band  = 0.161·V / (A_band + 4·m·V)      （m>0 时附加空气吸收，见 AIR_M）
+ *   驻波频率    = (343/2)·√((nx/L)² + (ny/W)² + (nz/H)²)，nx,ny,nz 为非负整数且不全为 0
+ *   Schroeder  = 2000·√(RT60_500 / V)
+ *   临界距离    = 0.141·√(Q·A)   （Q=1）
+ *   A_target   = 0.161·V / RT60_target，需要补的吸声量 = A_target − A_current
+ */
+(function (root, factory) {
+  const A = factory();
+  if (typeof module === 'object' && module.exports) module.exports = A;
+  if (root) root.AppCore = A;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  /* ─────────────── 常量与口径 ─────────────── */
+
+  const C_SOUND = 343;          // 声速 m/s（20 °C 空气中的常用值）
+  const SABINE_K = 0.161;       // Sabine 常数 ≈ 24·ln10/c = 0.1611（c=343）
+  const REF_FREQS = [125, 250, 500, 1000, 2000, 4000];
+  const MODE_MAX_HZ = 300;      // 驻波清单上限
+  const MODE_ORDER = 4;         // 每个方向的阶数上限（含 0）
+  const GAP_MIN_HZ = 12;        // 「空档」判定阈值（设计选择，不是标准）
+  const GAP_RANGE = [50, 120];  // 空档统计的频段（设计选择）
+
+  /* 空气吸收系数 m（1/m，20 °C / 50% RH 的常用近似值）。
+     只对 RT60 起作用、量级很小，单独列出来并注明：没有它时「房间越大 RT60 越长」在小房间里
+     会被其它效应掩盖；这里只为把机制写清楚，不代表精确的温湿度模型。 */
+  const AIR_M = { 125: 0, 250: 0, 500: 0, 1000: 0, 2000: 0.003, 4000: 0.012 };
+
+  /* 材料库：六段吸声系数是**公开声学资料里的典型区间取值**（同一名称的材料在厚度、衬垫、
+     空腔、安装方式不同时差别可以很大）。页面把每个系数都做成可编辑，并明确不代表任何具体产品。
+     每行：id / 名称 / 分组 / 六段系数 / 备注（厚度口径） */
+  const MATERIALS = [
+    { id: 'paint_concrete', name: '乳胶漆混凝土 / 砖墙', group: '硬面', a: [0.02, 0.02, 0.03, 0.04, 0.05, 0.05], note: '硬墙，基本不吸声' },
+    { id: 'plaster', name: '抹灰墙面（未处理）', group: '硬面', a: [0.02, 0.02, 0.03, 0.04, 0.05, 0.05], note: '与硬墙同档' },
+    { id: 'glass_win', name: '玻璃窗（普通单层）', group: '硬面', a: [0.18, 0.06, 0.04, 0.03, 0.02, 0.02], note: '低频靠薄板共振，中高频反而很亮' },
+    { id: 'plasterboard', name: '轻钢龙骨石膏板墙', group: '薄板', a: [0.29, 0.10, 0.05, 0.04, 0.07, 0.09], note: '低频有薄板共振吸收' },
+    { id: 'wood_floor', name: '复合木地板（架空）', group: '硬面', a: [0.15, 0.11, 0.10, 0.07, 0.06, 0.07], note: '架空木地板低频比想象中能吸一点' },
+    { id: 'tile_floor', name: '瓷砖 / 石材地面', group: '硬面', a: [0.01, 0.01, 0.01, 0.02, 0.02, 0.02], note: '最亮的硬面' },
+    { id: 'vinyl_floor', name: 'PVC / 塑胶地面', group: '硬面', a: [0.02, 0.03, 0.03, 0.03, 0.03, 0.02], note: '薄且贴地，几乎不吸声' },
+    { id: 'carpet_thin', name: '薄地毯（贴地）', group: '软面', a: [0.02, 0.04, 0.08, 0.20, 0.35, 0.40], note: '只吸中高频' },
+    { id: 'carpet_mid', name: '中厚地毯（带衬垫）', group: '软面', a: [0.08, 0.24, 0.57, 0.69, 0.71, 0.73], note: '低频仍弱 —— 这是本页要讲的坑之一' },
+    { id: 'curtain_thin', name: '单层窗帘（离墙 50 mm）', group: '软面', a: [0.05, 0.06, 0.39, 0.63, 0.70, 0.73], note: '中高频有效' },
+    { id: 'curtain_heavy', name: '厚重窗帘（打褶、离墙 100 mm）', group: '软面', a: [0.14, 0.35, 0.55, 0.72, 0.70, 0.65], note: '离墙越远低频越好' },
+    { id: 'upholstered', name: '布艺沙发 / 软包（按投影面积）', group: '软面', a: [0.10, 0.25, 0.45, 0.60, 0.65, 0.70], note: '家具不是只算体积，要按受声面积算' },
+    { id: 'panel_25', name: '多孔吸声板 25 mm（贴墙）', group: '吸声处理', a: [0.10, 0.25, 0.55, 0.80, 0.85, 0.85], note: '中高频主力，低频弱' },
+    { id: 'panel_50', name: '多孔吸声板 50 mm（贴墙）', group: '吸声处理', a: [0.20, 0.45, 0.75, 0.90, 0.92, 0.92], note: '厚度翻倍，低频明显改善' },
+    { id: 'panel_50_gap', name: '多孔吸声板 50 mm（离墙 50 mm 空腔）', group: '吸声处理', a: [0.35, 0.65, 0.85, 0.92, 0.92, 0.90], note: '空腔等于把低频往下推' },
+    { id: 'panel_100', name: '多孔吸声板 100 mm', group: '吸声处理', a: [0.45, 0.75, 0.90, 0.95, 0.95, 0.93], note: '再厚，低频更好，收益递减' },
+    { id: 'bass_trap', name: '角落低频陷阱（膜 / 亥姆霍兹类）', group: '吸声处理', a: [0.60, 0.72, 0.60, 0.45, 0.40, 0.35], note: '只在低频有效 —— 与多孔板互补' },
+    { id: 'custom', name: '自定义吸声系数（下一段由你填）', group: '自定义', a: [0.20, 0.30, 0.40, 0.45, 0.45, 0.45], note: '这是你自己填的值，本页不背书' },
+  ];
+
+  const SURFACES = [
+    { key: 'floor', name: '地面' },
+    { key: 'ceiling', name: '天花' },
+    { key: 'wallN', name: '墙 · 长边一侧' },
+    { key: 'wallS', name: '墙 · 长边另一侧' },
+    { key: 'wallE', name: '墙 · 短边一侧' },
+    { key: 'wallW', name: '墙 · 短边另一侧' },
+  ];
+
+  const LIMITS = {
+    L: [1.5, 30], W: [1.5, 30], H: [1.5, 12],
+    targetRT60: [0.10, 2.00],
+    panelArea: [0, 200],
+    speakerDistance: [0.3, 10],
+    furnitureCount: [0, 12],
+    // 听音位到墙的距离只受房间尺寸约束，单独判
+  };
+
+  const LABEL = {
+    verdict: { draggy: '拖', near: '接近', dry: '干' },
+    modeKind: { length: '长边方向', width: '短边方向', height: '高度方向' },
+  };
+
+  /* ─────────────── 输入 ─────────────── */
+
+  function defaults() {
+    return {
+      L: 4.2, W: 3.6, H: 2.6,                 // 房间长宽高（m）—— 虚构示例
+      materials: {                             // 六个面各用什么材料
+        floor: 'wood_floor',
+        ceiling: 'paint_concrete',
+        wallN: 'paint_concrete', wallS: 'paint_concrete',
+        wallE: 'paint_concrete', wallW: 'paint_concrete',
+      },
+      customA: [0.20, 0.30, 0.40, 0.45, 0.45, 0.45],   // 「自定义」材料用的六段系数
+      furniture: [                             // 地面 / 靠墙的大件（等效吸声 = 面积 × 该材料系数）
+        { name: '布艺沙发', material: 'upholstered', area: 3.2 },
+        { name: '单层窗帘', material: 'curtain_thin', area: 5.4 },
+      ],
+      panel: { area: 0, material: 'panel_50', surface: 'wallN' },   // 吸声板
+      listener: { fromWallL: null, fromWallW: null },               // null = 取房间中心
+      speakerDistance: 1.6,
+      targetRT60: 0.35,
+    };
+  }
+
+  /* 一组内置场景：全部是虚构示例，改条件用；不代表任何真实房间或产品 */
+  function scenarios() {
+    return [
+      { key: 'default', label: '默认：4.2×3.6×2.6 硬装房（几乎无吸声）', over: {} },
+      { key: 'no_furniture', label: '把家具也算掉（无任何软装）', over: { furniture: [] } },
+      { key: 'carpet', label: '地面换中厚地毯', over: { materials: Object.assign({}, defaults().materials, { floor: 'carpet_mid' }) } },
+      { key: 'panels10', label: '贴 10 m² 吸声板（50 mm 贴墙）', over: { panel: { area: 10, material: 'panel_50', surface: 'wallN' } } },
+      { key: 'studio', label: '小录音间：3.0×2.4×2.4 + 吸声处理', over: { L: 3.0, W: 2.4, H: 2.4, furniture: [], panel: { area: 8, material: 'panel_50_gap', surface: 'wallN' } } },
+      { key: 'livingroom', label: '客厅：5.4×4.2×2.8 + 地毯窗帘', over: { L: 5.4, W: 4.2, H: 2.8, materials: Object.assign({}, defaults().materials, { floor: 'carpet_mid', wallN: 'curtain_heavy' }) } },
+      { key: 'big_hall', label: '大面积硬装：8×6×3.2', over: { L: 8, W: 6, H: 3.2, furniture: [], panel: { area: 0, material: 'panel_50', surface: 'wallN' } } },
+      { key: 'cube', label: '正方体房间 3×3×3（简并最严重）', over: { L: 3, W: 3, H: 3, furniture: [], panel: { area: 0, material: 'panel_50', surface: 'wallN' } } },
+    ];
+  }
+
+  /* ─────────────── 校验（一次把所有错都报出来） ─────────────── */
+
+  function isNum(v) { return typeof v === 'number' && isFinite(v); }
+  function matById(id) { for (let i = 0; i < MATERIALS.length; i++) if (MATERIALS[i].id === id) return MATERIALS[i]; return null; }
+
+  function checkNum(errors, key, label, value, lo, hi, unit) {
+    if (!isNum(value)) { errors.push({ field: key, code: 'not_number', msg: label + '必须是数字' }); return false; }
+    if (value < lo || value > hi) {
+      errors.push({ field: key, code: 'out_of_range', msg: label + '要在 ' + lo + ' – ' + hi + (unit || '') + ' 之间（当前 ' + value + '）' });
+      return false;
+    }
+    return true;
+  }
+
+  /* 材料在某频段的吸声系数（自定义材料读 customA；所有值都夹在 0–1，超出即报错）。
+     类型先严格判：字符串 / null / undefined / NaN 一律返回 NaN，交给校验层报错，
+     绝不让 Number(null)=0 这种隐式转换把非法输入变成「合法 0」。 */
+  function coeffOf(matId, band, customA) {
+    if (matId === 'custom') {
+      const arr = Array.isArray(customA) ? customA : defaults().customA;
+      const v = arr[band];
+      if (typeof v !== 'number' || !isFinite(v)) return NaN;
+      return v;
+    }
+    const m = matById(matId);
+    if (!m) return NaN;
+    const v = m.a[band];
+    return (typeof v === 'number' && isFinite(v)) ? v : NaN;
+  }
+
+  function validate(raw) {
+    const inp = Object.assign({}, defaults(), raw || {});
+    // 嵌套对象分别合并，避免整体替换把缺的键丢掉
+    inp.materials = Object.assign({}, defaults().materials, raw && raw.materials ? raw.materials : {});
+    inp.panel = Object.assign({}, defaults().panel, raw && raw.panel ? raw.panel : {});
+    inp.listener = Object.assign({}, defaults().listener, raw && raw.listener ? raw.listener : {});
+    inp.furniture = Array.isArray(raw && raw.furniture) ? raw.furniture.slice(0, 20) : defaults().furniture;
+    inp.customA = Array.isArray(raw && raw.customA) ? raw.customA : defaults().customA;
+
+    const errors = [];
+
+    checkNum(errors, 'L', '房间长度', inp.L, LIMITS.L[0], LIMITS.L[1], ' m');
+    checkNum(errors, 'W', '房间宽度', inp.W, LIMITS.W[0], LIMITS.W[1], ' m');
+    checkNum(errors, 'H', '房间高度', inp.H, LIMITS.H[0], LIMITS.H[1], ' m');
+    checkNum(errors, 'targetRT60', '目标混响时间', inp.targetRT60, LIMITS.targetRT60[0], LIMITS.targetRT60[1], ' s');
+    checkNum(errors, 'speakerDistance', '音箱到听音位距离', inp.speakerDistance, LIMITS.speakerDistance[0], LIMITS.speakerDistance[1], ' m');
+    checkNum(errors, 'panel.area', '吸声板面积', inp.panel.area, LIMITS.panelArea[0], LIMITS.panelArea[1], ' m²');
+
+    /* 六个面的材料必须在库里 */
+    SURFACES.forEach(function (s) {
+      const id = inp.materials[s.key];
+      if (!matById(id)) {
+        errors.push({ field: 'materials.' + s.key, code: 'bad_enum', msg: s.name + '的材料选了库里没有的项（' + id + '）' });
+      }
+    });
+    if (!matById(inp.panel.material)) errors.push({ field: 'panel.material', code: 'bad_enum', msg: '吸声板的材料选了库里没有的项' });
+    if (!SURFACES.some(function (s) { return s.key === inp.panel.surface; })) {
+      errors.push({ field: 'panel.surface', code: 'bad_enum', msg: '吸声板安装面不在六个面里' });
+    }
+
+    /* 自定义系数 */
+    if (!Array.isArray(inp.customA) || inp.customA.length < REF_FREQS.length) {
+      errors.push({ field: 'customA', code: 'bad_shape', msg: '自定义吸声系数要 6 个数（125 / 250 / 500 / 1k / 2k / 4k Hz）' });
+    } else {
+      for (let b = 0; b < REF_FREQS.length; b++) {
+        const v = inp.customA[b];
+        // 严格判类型：Number(null)=0、Number('')=0 会把空值静默变成「合法 0」，这里不允许
+        if (typeof v !== 'number' || !isFinite(v) || v < 0 || v > 1) {
+          errors.push({ field: 'customA.' + b, code: 'out_of_range', msg: (REF_FREQS[b] + ' Hz 的自定义吸声系数要在 0 – 1 之间（当前 ' + inp.customA[b] + '）') });
+        }
+      }
+    }
+
+    /* 家具 */
+    if (inp.furniture.length > LIMITS.furnitureCount[1]) {
+      errors.push({ field: 'furniture', code: 'too_many', msg: '家具最多 ' + LIMITS.furnitureCount[1] + ' 件（当前 ' + inp.furniture.length + '）' });
+    }
+    inp.furniture.forEach(function (f, i) {
+      if (!f || typeof f !== 'object') { errors.push({ field: 'furniture.' + i, code: 'bad_item', msg: '第 ' + (i + 1) + ' 件家具不是一条记录' }); return; }
+      if (!matById(f.material)) errors.push({ field: 'furniture.' + i + '.material', code: 'bad_enum', msg: '第 ' + (i + 1) + ' 件家具（' + (f.name || '未命名') + '）的材料不在库里' });
+      if (typeof f.area !== 'number' || !isFinite(f.area)) {
+        errors.push({ field: 'furniture.' + i + '.area', code: 'not_number', msg: '第 ' + (i + 1) + ' 件家具的等效面积必须是数字（当前 ' + JSON.stringify(f.area) + '）' });
+      } else {
+        checkNum(errors, 'furniture.' + i + '.area', '第 ' + (i + 1) + ' 件家具的等效面积', f.area, 0, 200, ' m²');
+      }
+      if (typeof f.name !== 'string' || !f.name.trim()) errors.push({ field: 'furniture.' + i + '.name', code: 'empty', msg: '第 ' + (i + 1) + ' 件家具要有名字' });
+    });
+
+    /* 听音位：给了就必须落在房间里（含边界内 0.05 m 的余量） */
+    [['fromWallL', inp.L, '长边方向（到起算墙的距离）'], ['fromWallW', inp.W, '短边方向（到起算墙的距离）']].forEach(function (t) {
+      const v = inp.listener[t[0]];
+      if (v === null || v === undefined || v === '') return;
+      if (!isNum(v)) { errors.push({ field: 'listener.' + t[0], code: 'not_number', msg: '听音位' + t[2] + '必须是数字' }); return; }
+      if (v < 0 || v > t[1]) {
+        errors.push({ field: 'listener.' + t[0], code: 'out_of_range', msg: '听音位' + t[2] + '要在 0 – ' + t[1] + ' m 之间（当前 ' + v + '）' });
+      }
+    });
+
+    /* 尺寸互相约束：统计声学在极端比例下更不可靠，这里只做最小限度的合理性提示（不报错） */
+    return { ok: errors.length === 0, errors: errors, input: inp };
+  }
+
+  /* ─────────────── 几何 ─────────────── */
+
+  function geometry(L, W, H) {
+    const floor = L * W;
+    const wallsLong = 2 * L * H;    // 两条长边墙
+    const wallsShort = 2 * W * H;   // 两条短边墙
+    return {
+      V: L * W * H,
+      floorArea: floor,
+      ceilingArea: floor,
+      wallLongEach: L * H,
+      wallShortEach: W * H,
+      totalSurface: 2 * floor + wallsLong + wallsShort,
+      // 以「长边方向」为 x、短边方向为 y、高度为 z
+      dims: { x: L, y: W, z: H },
+    };
+  }
+
+  /* 六个面各自的面积 */
+  function surfaceAreas(g) {
+    return {
+      floor: g.floorArea,
+      ceiling: g.ceilingArea,
+      wallN: g.wallLongEach,
+      wallS: g.wallLongEach,
+      wallE: g.wallShortEach,
+      wallW: g.wallShortEach,
+    };
+  }
+
+  /* ─────────────── 吸声量 ─────────────── */
+
+  /* 逐面 × 逐频段的吸声量分解。返回 { total[band], bySurface[surfaceKey][band], byFurniture[band], panel[band] } */
+  function absorption(inp, g) {
+    const areas = surfaceAreas(g);
+    const bySurface = {};
+    const total = REF_FREQS.map(function () { return 0; });
+
+    SURFACES.forEach(function (s) {
+      const a = areas[s.key];
+      const c = REF_FREQS.map(function (_, b) { return coeffOf(inp.materials[s.key], b, inp.customA); });
+      bySurface[s.key] = { area: a, coeff: c, absorb: c.map(function (v) { return a * v; }) };
+      c.forEach(function (v, b) { total[b] += a * v; });
+    });
+
+    /* 家具：等效吸声 = 等效面积 × 该材料系数（这是本页的口径，写在页面上） */
+    const furniture = [];
+    const byFurniture = REF_FREQS.map(function () { return 0; });
+    inp.furniture.forEach(function (f) {
+      const c = REF_FREQS.map(function (_, b) { return coeffOf(f.material, b, inp.customA); });
+      const ab = c.map(function (v) { return f.area * v; });
+      furniture.push({ name: f.name, material: f.material, materialName: (matById(f.material) || {}).name || f.material, area: f.area, coeff: c, absorb: ab });
+      ab.forEach(function (v, b) { byFurniture[b] += v; });
+    });
+
+    /* 吸声板：只按面积计，不替换安装面原本的材料（如实写在页面：这是保守口径 —— 实际会遮住那部分墙面） */
+    const pc = REF_FREQS.map(function (_, b) { return coeffOf(inp.panel.material, b, inp.customA); });
+    const panel = pc.map(function (v) { return inp.panel.area * v; });
+
+    panel.forEach(function (v, b) { total[b] += v; });
+    byFurniture.forEach(function (v, b) { total[b] += v; });
+
+    return { total: total, bySurface: bySurface, byFurniture: byFurniture, furniture: furniture, panel: panel, panelCoeff: pc, areas: areas };
+  }
+
+  /* RT60（Sabine + 可选空气吸收） */
+  function rt60(V, A, m) {
+    const denom = A + 4 * (m || 0) * V;
+    if (!(denom > 0)) return Infinity;
+    return SABINE_K * V / denom;
+  }
+
+  /* ─────────────── 驻波（房间模式） ─────────────── */
+
+  /* 轴向模式：f = (c/2)·√((nx/L)²+(ny/W)²+(nz/H)²)，nx,ny,nz 非负整数且不全为 0。
+   *
+   * **枚举口径**（第一版在这里连错两次，记在质检报告里）：
+   *   ① 每个**互不相同的下标三元组**就是一条模式，各算各的频率 —— (1,0,0)、(0,1,0)、(0,0,1)
+   *      是三条模式，只有当 L=W=H 时它们的频率才恰好相等；
+   *   ② 「简并度」= 频率落在同一个值上的模式条数，也就是**排列轨道的大小**：
+   *      三个下标互不相同 → 1，两个相同 → 3，三个全同 → 1。
+   *      （一条模式同时非零的方向数另算，叫 axisCount，1/2/3。）
+   *   第一版只枚举 nx≥ny≥nz，把每个轨道只留一个代表 —— 简并度的分布看着没错，
+   *   但「下标↔轴」的对应关系被打破，非最长那两个方向的一阶模式整条消失（自检当场报红）。
+   *   第二版按「三个数排序后的字符串」分组，又把 (1,0,0)/(0,1,0)/(0,0,1) 当成一组，
+   *   三条不同频率被压成一条。定稿版：按三元组本身存，另给「按频率归并」的视图。 */
+  function roomModes(L, W, H, maxHz) {
+    const list = [];
+    for (let nx = 0; nx <= MODE_ORDER; nx++) {
+      for (let ny = 0; ny <= MODE_ORDER; ny++) {
+        for (let nz = 0; nz <= MODE_ORDER; nz++) {
+          if (nx === 0 && ny === 0 && nz === 0) continue;
+          const f = (C_SOUND / 2) * Math.sqrt(Math.pow(nx / L, 2) + Math.pow(ny / W, 2) + Math.pow(nz / H, 2));
+          if (!(f > 0) || f > maxHz) continue;
+          const axisCount = (nx ? 1 : 0) + (ny ? 1 : 0) + (nz ? 1 : 0);
+          const orbitSize = permuteCount([nx, ny, nz]);       // 排列轨道大小（同一轨道内的成员才同频）
+          list.push({ nx: nx, ny: ny, nz: nz, f: f, deg: orbitSize, axisCount: axisCount, key: [nx, ny, nz].join(',') });
+        }
+      }
+    }
+    list.sort(function (a, b) { return a.f - b.f || a.axisCount - b.axisCount || a.deg - b.deg; });
+
+    /* 穷举口径：把 5×5×5 全部三元组数一遍（不做任何去重），用来给自检当独立对拍 */
+    let bruteCount = 0;
+    for (let ax = 0; ax <= MODE_ORDER; ax++) for (let ay = 0; ay <= MODE_ORDER; ay++) for (let az = 0; az <= MODE_ORDER; az++) {
+      if (ax === 0 && ay === 0 && az === 0) continue;
+      const ff = (C_SOUND / 2) * Math.sqrt(Math.pow(ax / L, 2) + Math.pow(ay / W, 2) + Math.pow(az / H, 2));
+      if (ff > 0 && ff <= maxHz) bruteCount++;
+    }
+
+    /* 按频率归并的视图：同一频率只出现一次，频率数 = 互不相同的频率个数 */
+    const byFreq = [];
+    list.forEach(function (m) {
+      const lastOne = byFreq[byFreq.length - 1];
+      if (lastOne && Math.abs(lastOne.f - m.f) <= 1e-9) {
+        lastOne.members.push(m.key);
+        lastOne.axisCount = Math.max(lastOne.axisCount, m.axisCount);
+        lastOne.deg = lastOne.members.length;
+      } else {
+        byFreq.push({ f: m.f, axisCount: m.axisCount, deg: 1, members: [m.key] });
+      }
+    });
+    return { list: list, byFreq: byFreq, bruteCount: bruteCount };
+  }
+
+  /* 排列轨道大小：把 (nx,ny,nz) 分给 x,y,z 三个轴，能得到几个**互不相同**的三元组：
+     三个下标互不相同 → 6；两个相同 → 3；三个全同 → 1。
+     例 (2,1,0)：6 个排列都不同 → 6；例 (2,2,0)：只有 3 个 → 3。
+     这个数就是 cube 里「同一个频率上叠了几条模式」的下限（立方体下恰好相等）。
+     注意与「参与方向数」区分：(1,1,1) 的轨道大小是 1（只有一个排列），但它同时用到三个方向；
+     (0,1,1) 的轨道大小是 3（0 挪到三个轴各一次），参与方向数是 2。 */
+  function permuteCount(t) {
+    const uniq = {};
+    t.forEach(function (v) { uniq[v] = (uniq[v] || 0) + 1; });
+    const counts = Object.keys(uniq).map(function (k) { return uniq[k]; });
+    let denom = 1;
+    counts.forEach(function (c) { for (let i = 2; i <= c; i++) denom *= i; });
+    return 6 / denom;
+  }
+
+  /* 每个轴向模式的纯音频率（用于「每个方向各自的本征频率」表） */
+  function axialFrequencies(L, W, H) {
+    function series(dim) {
+      const r = [];
+      for (let n = 1; n <= MODE_ORDER; n++) r.push({ n: n, f: C_SOUND / (2 * dim) * n });
+      return r;
+    }
+    return { length: series(L), width: series(W), height: series(H) };
+  }
+
+  /* 相邻模式间距：把 ≤300 Hz 的模式排序后看每两步之间差多少 */
+  function modeSpacing(modes) {
+    const gaps = [];
+    for (let i = 1; i < modes.length; i++) {
+      gaps.push({ from: modes[i - 1].f, to: modes[i].f, gap: modes[i].f - modes[i - 1].f });
+    }
+    return gaps;
+  }
+
+  /* 空档：50–120 Hz 内相邻模式间距 ≥ GAP_MIN_HZ（阈值是设计选择，不是标准） */
+  function gapsInBand(modes, lo, hi, minGap) {
+    const inBand = modes.filter(function (m) { return m.f >= lo && m.f <= hi; });
+    const out = [];
+    for (let i = 1; i < inBand.length; i++) {
+      const g = inBand[i].f - inBand[i - 1].f;
+      if (g >= minGap) out.push({ from: inBand[i - 1].f, to: inBand[i].f, gap: g });
+    }
+    let maxGap = 0, maxPair = null;
+    for (let i = 1; i < inBand.length; i++) {
+      const g = inBand[i].f - inBand[i - 1].f;
+      if (g > maxGap) { maxGap = g; maxPair = [inBand[i - 1].f, inBand[i].f]; }
+    }
+    return { list: out, count: inBand.length, maxGap: maxGap, maxPair: maxPair };
+  }
+
+  /* ─────────────── 单点声学指标 ─────────────── */
+
+  /* Schroeder 频率：统计声学与模态声学的分界 */
+  function schroederHz(rt60_500, V) {
+    if (!(V > 0) || !(rt60_500 > 0)) return NaN;
+    return 2000 * Math.sqrt(rt60_500 / V);
+  }
+
+  /* Weyl 公式：频率 f 以下的模态数（含轴向 / 切向 / 斜向）
+     M = (4π/3)V(f/c)³ + (π/4)S(f/c)² + (L_edge/8)(f/c) */
+  function modalCount(f, V, S, edgeLen) {
+    const k = f / C_SOUND;
+    return (4 * Math.PI / 3) * V * Math.pow(k, 3) + (Math.PI / 4) * S * Math.pow(k, 2) + (edgeLen / 8) * k;
+  }
+
+  /* 临界距离：直达声与混响声相等的位置（Q=1） */
+  function criticalDistance(A, Q) {
+    const q = (Q == null ? 1 : Q);
+    if (!(A > 0)) return 0;
+    return 0.141 * Math.sqrt(q * A);
+  }
+
+  /* 听音位在某方向上的第 1 阶模式是压力腹点还是节点 */
+  function listenerModes(inp, g) {
+    const lx = (inp.listener.fromWallL === null || inp.listener.fromWallL === undefined) ? g.dims.x / 2 : inp.listener.fromWallL;
+    const ly = (inp.listener.fromWallW === null || inp.listener.fromWallW === undefined) ? g.dims.y / 2 : inp.listener.fromWallW;
+    function judge(pos, dim, f1) {
+      // 压力按 cos(nπx/L)：腹点（|cos|≈1）在 x=0 与 x=L，节点（cos=0）在 x=L/2，n=1
+      const c = Math.cos(Math.PI * pos / dim);
+      const isNode = Math.abs(c) < 0.15;
+      return { f: f1, cos: c, at: isNode ? 'node' : 'antinode', label: isNode ? '压力节点（听不到这一阶）' : '压力腹点（这一阶偏响）' };
+    }
+    return {
+      x: Object.assign(judge(lx, g.dims.x, C_SOUND / (2 * g.dims.x)), { pos: lx, dim: g.dims.x, name: '长边方向' }),
+      y: Object.assign(judge(ly, g.dims.y, C_SOUND / (2 * g.dims.y)), { pos: ly, dim: g.dims.y, name: '短边方向' }),
+      z: Object.assign(judge(g.dims.z / 2, g.dims.z, C_SOUND / (2 * g.dims.z)), { pos: g.dims.z / 2, dim: g.dims.z, name: '高度方向（听音高度按房间中点）' }),
+    };
+  }
+
+  /* ─────────────── 反解：目标 RT60 需要多少吸声量 ─────────────── */
+
+  /* 目标吸声量 A_target = k·V/RT60；还要补的 = A_target − A_current */
+  function requiredAbsorption(V, targetRT60, currentA) {
+    if (!(targetRT60 > 0)) return { A_target: Infinity, need: Infinity };
+    const A_target = SABINE_K * V / targetRT60;
+    return { A_target: A_target, need: Math.max(0, A_target - currentA) };
+  }
+
+  /* 每一种材料 / 动作：把需要补的吸声量换成「多少 m²」。
+     installed=false：当成独立加进来的吸声体，面积 = need / 该材料系数（本页主口径，用在空间里加东西）；
+     installed=true ：把材料装到某个面上、替换该面原有材料，面积 = need /（新材料系数 − 原面系数），
+                      系数不升高的组合没有解 —— 如实返回 null，不硬凑。 */
+  function prescriptions(inp, g, need, band, surfaceKey) {
+    const rows = [];
+    MATERIALS.forEach(function (m) {
+      if (m.id === 'custom') return;
+      const cNew = m.a[band];
+      const row = { material: m.id, name: m.name, coeff: cNew, freeArea: null, installedArea: null, cap: null };
+      if (cNew > 0) {
+        row.freeArea = need / cNew;
+        if (row.freeArea > 200) row.cap = '超过 200 m²，超出本页输入上限';
+      }
+      if (surfaceKey && g) {
+        const cOld = coeffOf(inp.materials[surfaceKey], band, inp.customA);
+        const delta = cNew - cOld;
+        row.delta = delta;
+        if (delta > 1e-9) {
+          const a = g && surfaceAreas(g)[surfaceKey];
+          const maxArea = a;
+          const rawArea = need / delta;
+          row.installedArea = rawArea;
+          row.installedMax = maxArea;
+          row.installedFeasible = rawArea <= maxArea + 1e-9;
+        }
+      }
+      rows.push(row);
+    });
+    rows.sort(function (a, b) {
+      const av = a.freeArea === null ? Infinity : a.freeArea;
+      const bv = b.freeArea === null ? Infinity : b.freeArea;
+      return av - bv;
+    });
+    return rows;
+  }
+
+  /* ─────────────── 自检（页面上显示，也用测试守） ─────────────── */
+
+  function runChecks(r) {
+    const checks = [];
+    function add(ok, name, detail) { checks.push({ ok: !!ok, name: name, detail: detail || '' }); }
+
+    add(r.geometry.V > 0, '体积为正', 'V = ' + fmt(r.geometry.V, 2) + ' m³');
+    add(Math.abs(r.geometry.totalSurface - (2 * r.geometry.floorArea + 2 * r.dims.x * r.dims.z + 2 * r.dims.y * r.dims.z)) < 1e-9,
+      '总表面积与六个面之和一致', fmt(r.geometry.totalSurface, 3) + ' m²');
+
+    /* 每个频段的吸声量必须等于各分项之和 */
+    let sumOk = true;
+    for (let b = 0; b < REF_FREQS.length; b++) {
+      let s = 0;
+      SURFACES.forEach(function (sf) { s += r.absorption.bySurface[sf.key].absorb[b]; });
+      s += r.absorption.byFurniture[b] + r.absorption.panel[b];
+      if (Math.abs(s - r.absorption.total[b]) > 1e-9) sumOk = false;
+    }
+    add(sumOk, '逐段吸声量 = 各面 + 家具 + 吸声板', '六段逐段核对');
+
+    add(r.rt60[2] > 0 && isFinite(r.rt60[2]), '500 Hz 混响时间是有限正数', fmt(r.rt60[2], 3) + ' s');
+
+    /* 混响时间随吸声量单调下降：把总吸声量翻倍，RT60 必须变小 */
+    const doubled = rt60(r.geometry.V, r.absorption.total[2] * 2, AIR_M[500]);
+    add(doubled < r.rt60[2], '吸声量翻倍 → RT60 变短', fmt(r.rt60[2], 3) + ' s → ' + fmt(doubled, 3) + ' s');
+
+    /* 反解回代：补够吸声量后重算，应当等于目标值 */
+    const A2 = r.absorption.total[2] + r.required.need;
+    const rt2 = rt60(r.geometry.V, A2, AIR_M[500]);
+    add(Math.abs(rt2 - r.input.targetRT60) < 0.005 || r.required.need === 0,
+      '反解回代：补够吸声量后 500 Hz 回到目标值',
+      fmt(rt2, 3) + ' s vs 目标 ' + fmt(r.input.targetRT60, 2) + ' s');
+
+    add(r.modes.length > 0, '驻波清单非空', r.modes.length + ' 条模式（≤ ' + MODE_MAX_HZ + ' Hz）');
+    add(r.modes.every(function (m) { return m.f > 0 && isFinite(m.f); }), '驻波频率都是有限正数', '');
+    /* 三条一阶轴向模式必须都在：c/(2L)、c/(2W)、c/(2H)（第一版漏掉过非最长那两个方向） */
+    const f1L = C_SOUND / (2 * r.input.L), f1W = C_SOUND / (2 * r.input.W), f1H = C_SOUND / (2 * r.input.H);
+    const hasF = function (f, arr) { return arr.some(function (m) { return Math.abs(m.f - f) < 1e-9; }); };
+    add(hasF(f1L, r.modes) && hasF(f1W, r.modes) && hasF(f1H, r.modes),
+      '三个方向的一阶模式都在清单里', fmt(f1L, 2) + ' / ' + fmt(f1W, 2) + ' / ' + fmt(f1H, 2) + ' Hz');
+    /* 模式清单条数必须等于「穷举全部合法下标三元组」的条数（独立口径对拍，一个不漏不重） */
+    add(r.modes.length === r.bruteModeCount, '模式条数 = 穷举的合法下标三元组条数',
+      r.modes.length + ' vs ' + r.bruteModeCount);
+    /* 每条模式的下标↔轴对应必须真实成立（第一版漏掉过短边一阶） */
+    add(r.modes.every(function (m) {
+      const f0 = (C_SOUND / 2) * Math.sqrt(Math.pow(m.nx / r.input.L, 2) + Math.pow(m.ny / r.input.W, 2) + Math.pow(m.nz / r.input.H, 2));
+      return Math.abs(f0 - m.f) < 1e-9;
+    }), '每条模式的下标与轴对应正确', '');
+    /* 按频率归并后：频率个数 ≤ 模式条数，且再没有两条同频 */
+    add(r.modesByFreq.length <= r.modes.length && r.modesByFreq.length > 0,
+      '按频率归并后的频率个数不多于模式条数', r.modesByFreq.length + ' 个频率 / ' + r.modes.length + ' 条模式');
+    let freqUniq = true;
+    for (let i = 1; i < r.modesByFreq.length; i++) if (Math.abs(r.modesByFreq[i].f - r.modesByFreq[i - 1].f) < 1e-9) freqUniq = false;
+    add(freqUniq, '归并后的频率两两不同', '');
+    add(r.modesByFreq.reduce(function (s2, m) { return s2 + m.deg; }, 0) === r.modes.length,
+      '归并视图里各频率的简并度之和 = 模式条数',
+      r.modesByFreq.reduce(function (s2, m) { return s2 + m.deg; }, 0) + ' vs ' + r.modes.length);
+    add(r.modesByFreq.every(function (m) { return m.deg === m.members.length && m.deg >= 1; }),
+      '归并视图里每条频率的简并度 = 它的成员条数', '');
+
+    add(r.schroeder > 0 && isFinite(r.schroeder), 'Schroeder 频率是有限正数', fmt(r.schroeder, 1) + ' Hz');
+    add(r.criticalDistance > 0, '临界距离为正', fmt(r.criticalDistance, 3) + ' m');
+    add(r.planAreaOk, '处方面积要么是正数要么显式无解（不出现 NaN）', '');
+    add(r.rt60.every(function (v) { return v > 0 && isFinite(v); }), '六个频段 RT60 都是有限正数', '');
+    add(r.rt60[2] >= r.rt60[5] || r.absorption.total[2] >= r.absorption.total[5],
+      '高频不会比中频更拖（除非吸声量也更大）', fmt(r.rt60[2], 3) + ' s vs ' + fmt(r.rt60[5], 3) + ' s');
+    return checks;
+  }
+
+  /* ─────────────── 主计算 ─────────────── */
+
+  function compute(raw) {
+    const v = validate(raw);
+    if (!v.ok) return { ok: false, errors: v.errors };
+    const inp = v.input;
+    const g = geometry(inp.L, inp.W, inp.H);
+    const ab = absorption(inp, g);
+
+    const rt60Bands = REF_FREQS.map(function (f, b) { return rt60(g.V, ab.total[b], AIR_M[f]); });
+    const mm = roomModes(inp.L, inp.W, inp.H, MODE_MAX_HZ);
+    const modes = mm.list;             // 每一条模式各占一行（下标↔轴的对应关系完整保留）
+    const modesByFreq = mm.byFreq;     // 按频率归并：同一个频率只出现一次
+    const bruteModeCount = mm.bruteCount;
+    const axial = axialFrequencies(inp.L, inp.W, inp.H);
+    const spacing = modeSpacing(modesByFreq);
+    const gapInfo = gapsInBand(modesByFreq, GAP_RANGE[0], GAP_RANGE[1], GAP_MIN_HZ);
+
+    const sch = schroederHz(rt60Bands[2], g.V);
+    const cd = criticalDistance(ab.total[2], 1);
+    const edgeLen = 4 * (inp.L + inp.W + inp.H);
+    const modesBelowSch = modalCount(sch, g.V, g.totalSurface, edgeLen);
+
+    const req = requiredAbsorption(g.V, inp.targetRT60, ab.total[2]);
+    const presc = prescriptions(inp, g, req.need, 2, 'wallN');
+    const lm = listenerModes(inp, g);
+
+    /* 显示分组（设计选择，不是标准） */
+    const v500 = rt60Bands[2];
+    const verdict = v500 > 0.6 ? 'draggy' : (v500 >= 0.4 ? 'near' : 'dry');
+
+    /* 参考：把整间房按某一种吸声处理铺满会是多少（用于「对照」而不是推荐） */
+    const uniformRef = MATERIALS.filter(function (m) { return m.group === '吸声处理'; }).map(function (m) {
+      const A = g.totalSurface * m.a[2];
+      return { material: m.id, name: m.name, coeff: m.a[2], A: A, rt60: rt60(g.V, A, AIR_M[500]) };
+    });
+
+    const r = {
+      ok: true,
+      input: inp,
+      geometry: Object.assign({}, g, { edgeLen: edgeLen }),
+      dims: g.dims,
+      absorption: ab,
+      rt60: rt60Bands,
+      bands: REF_FREQS.slice(),
+      airM: AIR_M,
+      modes: modes,
+      modesByFreq: modesByFreq,
+      bruteModeCount: bruteModeCount,
+      axial: axial,
+      spacing: spacing,
+      gaps: gapInfo,
+      gapMinHz: GAP_MIN_HZ,
+      gapRange: GAP_RANGE,
+      schroeder: sch,
+      criticalDistance: cd,
+      modalCountAtSchroeder: modesBelowSch,
+      required: req,
+      prescriptions: presc,
+      listener: lm,
+      verdict: verdict,
+      verdictLabel: LABEL.verdict[verdict],
+      uniformRef: uniformRef,
+      surfaceList: SURFACES.map(function (s) { return { key: s.key, name: s.name }; }),
+    };
+    /* 处方：把需要补的吸声量摊到几种常用做法上（都不代表产品推荐）。
+       面积一律显式算：能算给正数，算不出（系数没提高 / 缺口为 0）给 null 并在 note 里说明 ——
+       绝不用 NaN 当「不可行」的哨兵（那样既看不出原因，又会污染 JSON 与页面）。 */
+    const gap = req.need;
+    const areaOf = function (addedCoeff, limit) {
+      if (!(gap > 0)) return null;
+      if (!(addedCoeff > 1e-12)) return null;
+      const a = gap / addedCoeff;
+      return (isFinite(a) && a >= 0 && (limit == null || a <= limit + 1e-9)) ? a : null;
+    };
+    const deltaOn = function (surfaceKey, matId) {
+      return coeffOf(matId, 2, inp.customA) - coeffOf(inp.materials[surfaceKey], 2, inp.customA);
+    };
+    r.plan = {
+      need: gap,
+      A_target: req.A_target,
+      A_current: ab.total[2],
+      options: [
+        { key: 'panel_wall', label: '长边墙贴 50 mm 多孔吸声板（替换原面材料）',
+          area: areaOf(deltaOn('wallN', 'panel_50'), surfaceAreas(g).wallN),
+          max: surfaceAreas(g).wallN, basis: deltaOn('wallN', 'panel_50') },
+        { key: 'panel_free', label: '直接加 50 mm 多孔吸声板（按等效面积）',
+          area: areaOf(coeffOf('panel_50', 2, inp.customA), null), max: null, basis: coeffOf('panel_50', 2, inp.customA) },
+        { key: 'carpet', label: '地面换中厚地毯（替换原地面材料）',
+          area: areaOf(deltaOn('floor', 'carpet_mid'), surfaceAreas(g).floor),
+          max: surfaceAreas(g).floor, basis: deltaOn('floor', 'carpet_mid') },
+        { key: 'trap_free', label: '加角落低频陷阱（按等效面积）',
+          area: areaOf(coeffOf('bass_trap', 2, inp.customA), null), max: null, basis: coeffOf('bass_trap', 2, inp.customA) },
+      ],
+    };
+    r.plan.options.forEach(function (o) {
+      if (!(gap > 0)) o.note = '已经达标，不需要再补';
+      else if (!(o.basis > 1e-12)) o.note = '这个组合的吸声系数没有提高，加它不会让混响变短';
+      else if (o.area === null && o.max != null) o.note = '需要的面积超过这个面的面积（' + fmt(o.max, 2) + ' m²），单靠它做不到';
+      else if (o.area === null) o.note = '算不出可行面积';
+      else o.note = '';
+    });
+    /* 面积必须要么是正数、要么是 null —— 留一条自检守住这个契约 */
+    r.planAreaOk = r.plan.options.every(function (o) { return o.area === null || (isFinite(o.area) && o.area >= 0); });
+
+    /* 自检放在最后：它要读 plan 与 planAreaOk（先前放在对象字面量后面，
+       而 const 声明尚未求值 → plan 还是 undefined，check 直接红。这个顺序 bug 是测试抓出来的）。 */
+    r.checks = runChecks(r);
+    r.selfCheckFailures = r.checks.filter(function (c) { return !c.ok; }).length;
+
+    return r;
+  }
+
+  /* ─────────────── 格式化（页面与导出共用同一套） ─────────────── */
+
+  function fmt(x, d) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    const n = (d == null ? 2 : d);
+    return Number(x).toFixed(n);
+  }
+  function fmtRT(x) { return fmt(x, x >= 1 ? 2 : 3); }
+  function fmtHz(x) { return fmt(x, 1); }
+  function fmtM2(x) { return fmt(x, 2) + ' m²'; }
+  function fmtArea(x) {
+    if (!isFinite(x)) return '—';
+    return x >= 100 ? fmt(x, 0) : (x >= 10 ? fmt(x, 1) : fmt(x, 2));
+  }
+  function fmtPct(x, d) { return fmt(x, d == null ? 1 : d) + '%'; }
+
+  /* 六段吸声系数表（页面上的材料表用） */
+  function materialRows() {
+    return MATERIALS.map(function (m) { return { id: m.id, name: m.name, group: m.group, a: m.a.slice(), note: m.note }; });
+  }
+  function materialGroups() {
+    const gs = [];
+    MATERIALS.forEach(function (m) { if (gs.indexOf(m.group) < 0) gs.push(m.group); });
+    return gs;
+  }
+  function surfaceRows() { return SURFACES.map(function (s) { return { key: s.key, name: s.name }; }); }
+  function freqLabels() { return REF_FREQS.slice(); }
+
+  return {
+    C_SOUND: C_SOUND, SABINE_K: SABINE_K, REF_FREQS: REF_FREQS, MODE_MAX_HZ: MODE_MAX_HZ,
+    AIR_M: AIR_M, LIMITS: LIMITS, LABEL: LABEL, GAP_MIN_HZ: GAP_MIN_HZ, GAP_RANGE: GAP_RANGE,
+    MATERIALS: MATERIALS, SURFACES: SURFACES,
+    defaults: defaults, scenarios: scenarios, validate: validate, compute: compute,
+    geometry: geometry, surfaceAreas: surfaceAreas, absorption: absorption, rt60: rt60,
+    roomModes: roomModes, axialFrequencies: axialFrequencies, modeSpacing: modeSpacing, gapsInBand: gapsInBand,
+    schroederHz: schroederHz, criticalDistance: criticalDistance, modalCount: modalCount,
+    listenerModes: listenerModes, requiredAbsorption: requiredAbsorption, prescriptions: prescriptions,
+    coeffOf: coeffOf, matById: matById, permuteCount: permuteCount, runChecks: runChecks,
+    materialRows: materialRows, materialGroups: materialGroups, surfaceRows: surfaceRows, freqLabels: freqLabels,
+    fmt: fmt, fmtRT: fmtRT, fmtHz: fmtHz, fmtM2: fmtM2, fmtArea: fmtArea, fmtPct: fmtPct,
+  };
+});
+
+</script>
+<script>
+/* 房间的混响时间 · 界面层
+ * 只做四件事：读输入 → 调 AppCore.compute → 把结果画出来（三步向导 + 房间声学体检报告）→ 导出。
+ * 页面上每一个数字都来自同一次 compute 的返回对象，页面不自己二次计算
+ * （例外只有纯粹用来画条形长度的比例，逐处标注）。
+ */
+(function () {
+  'use strict';
+  const A = window.AppCore;
+
+  const SLUG = 'room-reverb';
+  const TITLE = '房间的混响时间';
+  const VERSION = '1.0.0';
+  const STORE_KEY = 'room-reverb::v1';
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const RT = (x) => A.fmtRT(x) + ' s';
+  const Hz = (x) => A.fmtHz(x) + ' Hz';
+  const M2 = (x) => A.fmtM2(x);
+
+  const FIELDS = ['L', 'W', 'H', 'targetRT60', 'speakerDistance'];
+  const IDS = { L: 'p-L', W: 'p-W', H: 'p-H', targetRT60: 'p-target', speakerDistance: 'p-spk' };
+
+  let last = null;          // 最近一次 compute 的返回，导出与处方用
+  let counter = 0;          // 重算次数（自检用）
+  let view = 'inputs';      // inputs | materials | extras
+  /* 「最后写进去的输入」。材料表是 render() 动态生成的，首次 writeInputs() 时它还不存在 ——
+     所以读输入时凡是 DOM 里没有的控件，一律回落到这份状态，绝不对 null 取属性。
+     （这个坑是本轮真实踩到的：页面初始化直接抛 TypeError，整页全白。） */
+  let currentInputs = null;
+
+  /* ───────── 读 / 写输入 ───────── */
+  function readInputs() {
+    const d = currentInputs || A.defaults();
+    const mats = {};
+    A.surfaceRows().forEach((s) => {
+      const el = $('m-' + s.key);
+      mats[s.key] = el ? el.value : d.materials[s.key];
+    });
+    const furniture = [];
+    const fRows = document.querySelectorAll('#furn-body tr');
+    if (fRows.length) {
+      fRows.forEach((tr) => {
+        const nm = tr.querySelector('.f-name'), mt = tr.querySelector('.f-mat'), ar = tr.querySelector('.f-area');
+        if (!nm || !mt || !ar) return;                       // 结构不完整的行直接跳过，不抛异常
+        furniture.push({ name: nm.value, material: mt.value, area: Number(ar.value) });
+      });
+    } else {
+      (d.furniture || []).forEach((f) => furniture.push({ name: f.name, material: f.material, area: f.area }));
+    }
+    const rawCustom = [];
+    const cBands = document.querySelectorAll('.c-band');
+    if (cBands.length) cBands.forEach((el) => rawCustom.push(el.value === '' ? NaN : Number(el.value)));
+    else (d.customA || A.defaults().customA).forEach((v) => rawCustom.push(v));
+    const llEl = $('p-ll'), lwEl = $('p-lw');
+    const lL = llEl ? (llEl.value === '' ? null : Number(llEl.value)) : d.listener.fromWallL;
+    const lW = lwEl ? (lwEl.value === '' ? null : Number(lwEl.value)) : d.listener.fromWallW;
+    return {
+      L: Number($('p-L').value), W: Number($('p-W').value), H: Number($('p-H').value),
+      materials: mats,
+      customA: rawCustom,
+      furniture: furniture,
+      panel: { area: Number($('p-panel').value), material: $('p-pmat').value, surface: $('p-psurf').value },
+      listener: { fromWallL: lL, fromWallW: lW },
+      speakerDistance: Number($('p-spk').value),
+      targetRT60: Number($('p-target').value),
+    };
+  }
+
+  function writeInputs(inp) {
+    const d = Object.assign(A.defaults(), inp || {});
+    d.materials = Object.assign({}, A.defaults().materials, inp && inp.materials ? inp.materials : {});
+    d.panel = Object.assign({}, A.defaults().panel, inp && inp.panel ? inp.panel : {});
+    d.listener = Object.assign({}, A.defaults().listener, inp && inp.listener ? inp.listener : {});
+    d.customA = Array.isArray(inp && inp.customA) ? inp.customA : A.defaults().customA;
+    /* 先把状态写下来：后面无论 DOM 有没有准备好，readInputs 都能拿到一致的输入 */
+    currentInputs = JSON.parse(JSON.stringify({
+      L: d.L, W: d.W, H: d.H, materials: d.materials, customA: d.customA,
+      furniture: (Array.isArray(inp && inp.furniture) ? inp.furniture : d.furniture).map((f) => ({ name: f.name, material: f.material, area: f.area })),
+      panel: d.panel, listener: d.listener, speakerDistance: d.speakerDistance, targetRT60: d.targetRT60,
+    }));
+    FIELDS.forEach((k) => { if ($(IDS[k])) $(IDS[k]).value = d[k]; });
+    A.surfaceRows().forEach((s) => { const el = $('m-' + s.key); if (el) el.value = d.materials[s.key]; });
+    if ($('p-panel')) $('p-panel').value = d.panel.area;
+    if ($('p-pmat')) $('p-pmat').value = d.panel.material;
+    if ($('p-psurf')) $('p-psurf').value = d.panel.surface;
+    if ($('p-ll')) $('p-ll').value = d.listener.fromWallL === null ? '' : d.listener.fromWallL;
+    if ($('p-lw')) $('p-lw').value = d.listener.fromWallW === null ? '' : d.listener.fromWallW;
+    document.querySelectorAll('.c-band').forEach((el, i) => { el.value = d.customA[i]; });
+    renderFurniture(currentInputs.furniture);
+    syncMaterialNotes();
+  }
+
+  function renderFurniture(rows) {
+    const body = $('furn-body');
+    body.innerHTML = '';
+    (rows || []).forEach((f) => addFurnitureRow(f));
+    $('f-empty').classList.toggle('hidden', (rows || []).length > 0);
+  }
+
+  function matOptions(sel) {
+    return A.materialRows().map((m) => '<option value="' + m.id + '"' + (m.id === sel ? ' selected' : '') + '>' + esc(m.name) + '</option>').join('');
+  }
+
+  function addFurnitureRow(f) {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td><input class="f-name" type="text" maxlength="24" value="' + esc(f && f.name ? f.name : '软装') + '"></td>' +
+      '<td><select class="f-mat">' + matOptions(f && f.material ? f.material : 'upholstered') + '</select></td>' +
+      '<td><input class="f-area" type="number" step="any" min="0" max="200" value="' + (f && f.area != null ? f.area : 2) + '"></td>' +
+      '<td><button class="sm del" title="删掉这一行">×</button></td>';
+    tr.querySelector('.del').addEventListener('click', () => { tr.remove(); $('f-empty').classList.toggle('hidden', document.querySelectorAll('#furn-body tr').length > 0); render(); });
+    tr.querySelector('.f-name').addEventListener('change', () => render());
+    tr.querySelector('.f-mat').addEventListener('change', () => render());
+    tr.querySelector('.f-area').addEventListener('change', () => render());
+    $('furn-body').appendChild(tr);
+    $('f-empty').classList.add('hidden');
+  }
+
+  /* ───────── 向导切换 ───────── */
+  function goto(v) {
+    view = v;
+    ['inputs', 'materials', 'extras'].forEach((k) => { $('step-' + k).classList.toggle('hidden', k !== v); });
+    document.querySelectorAll('#steps button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
+    const res = $('results');
+    if (res) res.classList.toggle('hidden', v === 'inputs' && !last);
+    window.scrollTo(0, 0);
+  }
+
+  /* ───────── 渲染 ───────── */
+  function render(override) {
+    const r = override || A.compute(readInputs());
+    const errbox = $('errbox');
+    if (!r.ok) {
+      last = null;
+      errbox.classList.remove('hidden');
+      errbox.innerHTML = '<b>这几处要改一下：</b><ul>' + r.errors.map((e) => '<li>' + esc(e.msg) + '</li>').join('') + '</ul>';
+      $('results').classList.add('hidden');
+      return r;
+    }
+    errbox.classList.add('hidden');
+    errbox.innerHTML = '';
+    last = r;
+    counter++;
+    currentInputs = JSON.parse(JSON.stringify(r.input));   // DOM 是权威来源，回写状态
+
+    renderTicket(r);
+    renderMaterialsStep(r);
+    renderFurnitureStep(r);
+    renderBands(r);
+    renderModes(r);
+    renderMetrics(r);
+    renderPlan(r);
+    renderChecks(r);
+    $('results').classList.remove('hidden');
+    $('meta-line').innerHTML = '本页数字全部由上面这份输入算出（同一套公式与同一份材料表）。材料吸声系数是<b>公开资料的典型参考值</b>，' +
+      '已列出并可逐项改写；<b>不代表任何具体产品</b>，也不引用任何标准条款。';
+    return r;
+  }
+
+  function renderTicket(r) {
+    $('t-rt').textContent = A.fmtRT(r.rt60[2]);
+    $('t-verdict').textContent = r.verdictLabel;
+    $('t-verdict').className = 'pill v-' + r.verdict;
+    $('t-target').textContent = RT(r.input.targetRT60);
+    $('t-need').textContent = r.required.need > 0 ? M2(r.required.need) : '已经达标';
+    $('t-volume').textContent = A.fmt(r.geometry.V, 2) + ' m³';
+    $('t-abs').textContent = M2(r.absorption.total[2]);
+    $('t-dims').textContent = r.input.L + ' × ' + r.input.W + ' × ' + r.input.H + ' m';
+
+    const b = r.rt60[2], target = r.input.targetRT60;
+    let line;
+    if (r.verdict === 'draggy') {
+      line = '500 Hz 的混响时间是 <b>' + A.fmtRT(b) + ' s</b>，比目标（' + A.fmt(target, 2) + ' s）长 —— ' +
+        '这个房间里说一句话，尾音会糊在后面。要压到目标，还需要补 <b>' + M2(r.required.need) + '</b> 的等效吸声量。';
+    } else if (r.verdict === 'near') {
+      line = '500 Hz 的混响时间是 <b>' + A.fmtRT(b) + ' s</b>，落在「接近」区间（0.4–0.6 s）—— ' +
+        (r.required.need > 0 ? '离你设的目标（' + A.fmt(target, 2) + ' s）还差 <b>' + M2(r.required.need) + '</b> 的等效吸声量。' : '已经达到你设的目标。');
+    } else {
+      line = '500 Hz 的混响时间是 <b>' + A.fmtRT(b) + ' s</b>，落在「干」区间（&lt; 0.4 s）——' +
+        (r.required.need > 0 ? '离你设的目标（' + A.fmt(target, 2) + ' s）还差 <b>' + M2(r.required.need) + '</b>。' : '已经达到你设的目标。');
+    }
+    $('t-line').innerHTML = line;
+  }
+
+  /* 第 2 步：逐面材料 + 实时累积 */
+  function renderMaterialsStep(r) {
+    const body = $('mat-body');
+    body.innerHTML = '';
+    A.surfaceRows().forEach((s) => {
+      const row = r.absorption.bySurface[s.key];
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td class="nm">' + esc(s.name) + '</td>' +
+        /* 必须同时给 id 与 data-k：readInputs/writeInputs 是按 id='m-<key>' 找控件的（找不着就回落到
+           内存状态，于是「在下拉里换材料」会静默不生效 —— 本轮就是踩了这个坑，验收里才暴露出来）。 */
+        '<td><select class="m-sel" id="m-' + s.key + '" data-k="' + s.key + '">' + matOptions(r.input.materials[s.key]) + '</select></td>' +
+        '<td class="num">' + A.fmt(row.area, 2) + '</td>' +
+        '<td class="num">' + A.fmt(row.coeff[2], 2) + '</td>' +
+        '<td class="num strong">' + A.fmt(row.absorb[2], 2) + '</td>';
+      tr.querySelector('.m-sel').addEventListener('change', () => render());
+      body.appendChild(tr);
+    });
+    const extra = r.absorption.byFurniture[2] + r.absorption.panel[2];
+    const tr2 = document.createElement('tr');
+    tr2.className = 'sumrow';
+    tr2.innerHTML = '<td class="nm">家具 + 吸声板</td><td class="muted">（在第 3 步里填）</td><td class="num">—</td><td class="num">—</td>' +
+      '<td class="num strong">' + A.fmt(extra, 2) + '</td>';
+    body.appendChild(tr2);
+
+    const total = r.absorption.total[2];
+    const target = r.required.A_target;
+    $('mat-total').textContent = M2(total);
+    $('mat-target').textContent = M2(target);
+    $('mat-gap').textContent = r.required.need > 0 ? M2(r.required.need) : '已达标';
+    $('mat-rt').textContent = RT(r.rt60[2]);
+    /* 条形长度只是比例显示：min(100%, 当前/目标) */
+    const w = target > 0 ? Math.min(100, total / target * 100) : 0;
+    $('mat-bar').style.width = w.toFixed(1) + '%';
+    $('mat-bar-txt').textContent = '当前吸声量是目标的 ' + A.fmt(w, 1) + '%';
+  }
+
+  function renderFurnitureStep(r) {
+    $('fu-total').textContent = M2(r.absorption.byFurniture[2]);
+    $('pa-total').textContent = M2(r.absorption.panel[2]);
+    $('pa-hint').innerHTML = '按你自己填的面积与系数算：' + A.fmt(r.input.panel.area, 2) + ' m² × ' +
+      A.fmt(A.coeffOf(r.input.panel.material, 2, r.input.customA), 2) + '（500 Hz 系数）= ' + M2(r.absorption.panel[2]) +
+      '。如实说明：这个口径<b>没有</b>扣掉被吸声板遮住的那部分墙面原本的吸声量（保守算法）。';
+  }
+
+  /* 六段混响时间 */
+  function renderBands(r) {
+    const max = Math.max.apply(null, r.rt60);
+    const body = $('band-body');
+    body.innerHTML = '';
+    r.bands.forEach((f, i) => {
+      const tr = document.createElement('tr');
+      if (f === 500) tr.className = 'now';
+      const w = max > 0 ? (r.rt60[i] / max * 100) : 0;   // 比例显示
+      tr.innerHTML = '<td class="nm">' + f + ' Hz' + (f === 500 ? '（主口径）' : '') + '</td>' +
+        '<td class="num strong">' + A.fmtRT(r.rt60[i]) + ' s</td>' +
+        '<td class="num opt">' + A.fmt(r.absorption.total[i], 2) + '</td>' +
+        '<td class="num opt">' + A.fmt(r.absorption.total[i] / r.geometry.totalSurface, 2) + '</td>' +
+        '<td class="bar"><span style="width:' + w.toFixed(1) + '%"></span></td>';
+      body.appendChild(tr);
+    });
+  }
+
+  /* 驻波清单 + 频率尺 */
+  function renderModes(r) {
+    const body = $('mode-body');
+    body.innerHTML = '';
+    r.modesByFreq.forEach((m) => {
+      const tr = document.createElement('tr');
+      const multi = m.members.length > 1;
+      tr.innerHTML = '<td class="num strong">' + A.fmt(m.f, 1) + '</td>' +
+        '<td class="num">' + m.deg + ' 条' + (multi ? '（同频）' : '') + '</td>' +
+        '<td class="num opt">' + m.axisCount + ' 个方向</td>' +
+        '<td class="nm2 opt">' + m.members.map(function (k) { return '(' + k + ')'; }).join(' ') + '</td>';
+      body.appendChild(tr);
+    });
+
+    $('mode-count').textContent = r.modes.length + ' 条模式 / ' + r.modesByFreq.length + ' 个不同频率';
+    $('mode-first').textContent = A.fmt(r.modesByFreq[0].f, 1) + ' Hz';
+    const gaps = r.gaps.list;
+    $('gap-count').textContent = gaps.length + ' 处';
+    /* 无论有没有跨过阈值，都把「这一段里最宽的一条缝」摆出来 —— 0 处空档时读者更需要知道到底有多密 */
+    const bandTxt = r.gapRange[0] + '–' + r.gapRange[1] + ' Hz 内共 ' + r.gaps.count + ' 个频率，最宽的一条缝是 ' +
+      A.fmt(r.gaps.maxGap, 1) + ' Hz' +
+      (r.gaps.maxPair ? '（' + A.fmt(r.gaps.maxPair[0], 1) + ' → ' + A.fmt(r.gaps.maxPair[1], 1) + ' Hz）' : '') + '。';
+    $('gap-list').innerHTML = bandTxt + (gaps.length
+      ? '跨过 ' + r.gapMinHz + ' Hz 阈值的有：' + gaps.map((g) => A.fmt(g.from, 1) + ' → ' + A.fmt(g.to, 1) + ' Hz（空 ' + A.fmt(g.gap, 1) + ' Hz）').join('；')
+      : '没有一条跨过 ' + r.gapMinHz + ' Hz 这个阈值。');
+
+    /* 频率尺：把每个「不同频率」画在 0–300 Hz 上（纯位置显示，不代表能量） */
+    const W = 1000, left = 46, right = 16;
+    const x = (f) => left + (Math.min(f, A.MODE_MAX_HZ) / A.MODE_MAX_HZ) * (W - left - right);
+    let svg = '<svg viewBox="0 0 ' + W + ' 96" width="100%" height="96" role="img" aria-label="驻波频率尺">';
+    svg += '<line x1="' + left + '" y1="60" x2="' + (W - right) + '" y2="60" stroke="#9fb3bb" stroke-width="1"/>';
+    [0, 50, 100, 150, 200, 250, 300].forEach((f) => {
+      svg += '<line x1="' + x(f).toFixed(1) + '" y1="56" x2="' + x(f).toFixed(1) + '" y2="64" stroke="#9fb3bb"/>';
+      svg += '<text x="' + x(f).toFixed(1) + '" y="80" font-size="12" fill="#6d8590" text-anchor="middle">' + f + '</text>';
+    });
+    gaps.forEach((g) => {
+      svg += '<rect x="' + x(g.from).toFixed(1) + '" y="52" width="' + Math.max(1, x(g.to) - x(g.from)).toFixed(1) + '" height="16" fill="#b8560f22"/>';
+    });
+    r.modesByFreq.forEach((m) => {
+      const h = 10 + Math.min(30, (m.deg - 1) * 5);
+      const y = 60 - h;
+      svg += '<rect x="' + (x(m.f) - 1.6).toFixed(1) + '" y="' + y.toFixed(1) + '" width="3.2" height="' + h.toFixed(1) + '" fill="' + (m.axisCount >= 3 ? '#b8560f' : '#0f6a72') + '"/>';
+    });
+    svg += '<text x="' + left + '" y="20" font-size="12" fill="#6d8590">柱高 = 同一频率上有几条模式；橙色 = 三个方向同时参与</text>';
+    svg += '<text x="' + left + '" y="38" font-size="12" fill="#6d8590">橙色底色 = 相邻频率间距 ≥ ' + r.gapMinHz + ' Hz 的空档</text>';
+    svg += '</svg>';
+    $('mode-ruler').innerHTML = svg;
+
+    /* 听音位 */
+    const lm = r.listener;
+    $('lm-x').textContent = A.fmt(lm.x.pos, 2) + ' m（共 ' + A.fmt(lm.x.dim, 2) + ' m）';
+    $('lm-y').textContent = A.fmt(lm.y.pos, 2) + ' m（共 ' + A.fmt(lm.y.dim, 2) + ' m）';
+    $('lm-body').innerHTML = ['x', 'y', 'z'].map((k) => {
+      const t = lm[k];
+      return '<tr><td class="nm2">' + esc(t.name) + '</td><td class="num">' + A.fmt(t.f, 1) + '</td>' +
+        '<td class="num">' + A.fmt(t.pos, 2) + '</td><td class="num opt">' + A.fmt(t.cos, 2) + '</td>' +
+        '<td class="nm2 ' + (t.at === 'node' ? 'warn' : '') + '">' + esc(t.label) + '</td></tr>';
+    }).join('');
+    const spk = r.input.speakerDistance;
+    $('lm-note').innerHTML = '音箱间距（等边三角形）＝ 听音距离 × √3 ＝ <b>' + A.fmt(spk * Math.sqrt(3), 2) + ' m</b>；' +
+      '这是按你现在填的听音距离 <b>' + A.fmt(spk, 2) + ' m</b> 算的几何关系，不是摆位建议。';
+  }
+
+  function renderMetrics(r) {
+    $('mt-sch').textContent = Hz(r.schroeder);
+    $('mt-sch-note').innerHTML = '用 500 Hz 的 RT60（' + A.fmtRT(r.rt60[2]) + ' s）与体积（' + A.fmt(r.geometry.V, 2) +
+      ' m³）算：2000·√(RT60/V)。<b>低于</b>这个频率，房间按「一个个分开的驻波」行事；高于它才更像统计声学的扩散场。';
+    $('mt-count').textContent = A.fmt(r.modalCountAtSchroeder, 0) + ' 个';
+    $('mt-count-note').innerHTML = '用 Weyl 公式算到 Schroeder 频率（' + Hz(r.schroeder) + '）为止的模态总数（含轴向 / 切向 / 斜向）。' +
+      '本页的驻波清单只列<b>轴向</b>模式、且只到 ' + A.MODE_MAX_HZ + ' Hz，所以清单条数（' + r.modes.length + '）比这个数小得多 —— 两个口径不同，不要混着看。';
+    $('mt-cd').textContent = A.fmt(r.criticalDistance, 2) + ' m';
+    $('mt-cd-note').innerHTML = '0.141·√(A)（Q 取 1、A 用 500 Hz 吸声量 ' + M2(r.absorption.total[2]) + '）。' +
+      '比这个距离近，听到的主要是音箱的直达声；比它远，房间的混响占比更大。';
+    $('mt-surface').textContent = M2(r.geometry.totalSurface);
+    $('mt-edge').textContent = A.fmt(r.geometry.edgeLen, 1) + ' m';
+  }
+
+  /* 处方：目标需要多少吸声量、要多少 m² */
+  function renderPlan(r) {
+    $('pl-target').textContent = RT(r.input.targetRT60);
+    $('pl-atarget').textContent = M2(r.required.A_target);
+    $('pl-acur').textContent = M2(r.absorption.total[2]);
+    $('pl-need').textContent = r.required.need > 0 ? M2(r.required.need) : '已达标（不需要补）';
+
+    const body = $('plan-body');
+    body.innerHTML = '';
+    r.plan.options.forEach((o, i) => {
+      const tr = document.createElement('tr');
+      const areaTxt = (o.area !== null && isFinite(o.area)) ? M2(o.area) : '没有解';
+      const usable = (o.area !== null && isFinite(o.area) && o.area <= 200);
+      tr.innerHTML = '<td class="nm2">' + esc(o.label) + '</td>' +
+        '<td class="num strong">' + areaTxt + '</td>' +
+        '<td class="nm2 ' + (o.note ? 'warn' : '') + '">' + esc(o.note || '可以做到') + '</td>' +
+        '<td>' + (usable ? '<button class="sm apply" data-i="' + i + '">代入</button>' : '') + '</td>';
+      body.appendChild(tr);
+    });
+    body.querySelectorAll('.apply').forEach((b) => {
+      b.addEventListener('click', () => {
+        const o = r.plan.options[Number(b.dataset.i)];
+        $('p-panel').value = Math.min(200, Math.max(0, Number(A.fmt(o.area, 2))));   // 代入后立刻重算
+        $('p-pmat').value = o.key === 'carpet' ? 'carpet_mid' : (o.key === 'trap_free' ? 'bass_trap' : 'panel_50');
+        goto('extras');
+        render();
+      });
+    });
+
+    /* 材料对照表：每种材料需要多少 m² 才能补上缺口 */
+    const tb = $('presc-body');
+    tb.innerHTML = '';
+    r.prescriptions.slice(0, 12).forEach((p) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td class="nm2">' + esc(p.name) + '</td>' +
+        '<td class="num">' + A.fmt(p.coeff, 2) + '</td>' +
+        '<td class="num strong">' + (p.freeArea === null ? '—' : M2(p.freeArea)) + '</td>' +
+        '<td class="num ' + (p.installedFeasible === false ? 'warn' : '') + '">' +
+        (p.installedArea == null ? '—' : (A.fmt(p.installedArea, 2) + ' m²' + (p.installedFeasible === false ? '（超过该面 ' + A.fmt(p.installedMax, 1) + ' m²）' : ''))) +
+        '</td></tr>';
+      tb.appendChild(tr);
+    });
+
+    /* 全屋统一处理的对照（不是推荐） */
+    const ub = $('uniform-body');
+    ub.innerHTML = r.uniformRef.map((u) =>
+      '<tr><td class="nm2">' + esc(u.name) + '</td><td class="num">' + A.fmt(u.coeff, 2) + '</td>' +
+      '<td class="num">' + A.fmt(u.A, 1) + '</td><td class="num strong">' + A.fmtRT(u.rt60) + ' s</td></tr>').join('');
+  }
+
+  function renderChecks(r) {
+    $('sc-head').innerHTML = '共 ' + r.checks.length + ' 条自检，<b>' + (r.checks.length - r.selfCheckFailures) + ' 通过</b>' +
+      (r.selfCheckFailures ? '，<b class="warn">' + r.selfCheckFailures + ' 条没过</b>' : '，0 条没过') + '。';
+    $('sc-body').innerHTML = r.checks.map((c) =>
+      '<div class="c"><span class="m ' + (c.ok ? 'p' : 'f') + '">' + (c.ok ? '✓' : '×') + '</span>' +
+      '<span>' + esc(c.name) + (c.detail ? ' <span class="dt">' + esc(c.detail) + '</span>' : '') + '</span></div>').join('');
+  }
+
+  /* 只读 DOM 里已经存在的东西，不做「元素一定在」的假设：writeInputs 会在材料表建好之前被调用
+     （首次初始化就是这样），那时 #mat-body 还是空的、furniture 行还没插 —— 早先这里直接读
+     `$('m-'+key).value` 会抛 TypeError，把整个 writeInputs 打断。改成全部按状态判断。 */
+  function syncMaterialNotes() {
+    const d = currentInputs || A.defaults();
+    const using = A.surfaceRows().some((s) => (d.materials || {})[s.key] === 'custom') ||
+      (d.panel && d.panel.material === 'custom') ||
+      (d.furniture || []).some((f) => f.material === 'custom');
+    const note = $('custom-note');
+    if (note) note.classList.toggle('hidden', !using);
+  }
+
+  /* ───────── 导出 ───────── */
+  function download(name, text, type) {
+    const blob = new Blob([text], { type: type || 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  }
+
+  function csv() {
+    const r = last;
+    const L = [];
+    L.push('房间的混响时间 v' + VERSION);
+    L.push('房间尺寸(m),' + r.input.L + '×' + r.input.W + '×' + r.input.H + ',体积(m³),' + r.geometry.V.toFixed(4));
+    L.push('');
+    L.push('频段(Hz),混响时间(s),总吸声量(m²),平均吸声系数');
+    r.bands.forEach((f, i) => L.push([f, r.rt60[i].toFixed(4), r.absorption.total[i].toFixed(4), (r.absorption.total[i] / r.geometry.totalSurface).toFixed(4)].join(',')));
+    L.push('');
+    L.push('面,材料,面积(m²),500Hz 吸声系数,500Hz 吸声量(m²)');
+    A.surfaceRows().forEach((s) => {
+      const row = r.absorption.bySurface[s.key];
+      L.push([s.name, (A.matById(r.input.materials[s.key]) || {}).name || '', row.area.toFixed(2), row.coeff[2].toFixed(3), row.absorb[2].toFixed(4)].join(','));
+    });
+    r.absorption.furniture.forEach((f) => L.push(['家具：' + f.name, f.materialName, f.area.toFixed(2), f.coeff[2].toFixed(3), f.absorb[2].toFixed(4)].join(',')));
+    L.push(['吸声板', (A.matById(r.input.panel.material) || {}).name || '', r.input.panel.area.toFixed(2), r.absorption.panelCoeff[2].toFixed(3), r.absorption.panel[2].toFixed(4)].join(','));
+    L.push('');
+    L.push('驻波（轴向，≤' + A.MODE_MAX_HZ + ' Hz）');
+    L.push('频率(Hz),nx,ny,nz,同频模式数,参与方向数');
+    r.modes.forEach((m) => L.push([m.f.toFixed(3), m.nx, m.ny, m.nz, m.deg, m.axisCount].join(',')));
+    L.push('');
+    L.push('指标,值');
+    L.push('Schroeder 频率(Hz),' + r.schroeder.toFixed(2));
+    L.push('临界距离(m),' + r.criticalDistance.toFixed(4));
+    L.push('Schroeder 以下模态数,' + r.modalCountAtSchroeder.toFixed(1));
+    L.push('目标 RT60(s),' + r.input.targetRT60);
+    L.push('目标吸声量(m²),' + r.required.A_target.toFixed(4));
+    L.push('还需补的吸声量(m²),' + r.required.need.toFixed(4));
+    L.push('自检,' + r.checks.length + ' 条 / 未过 ' + r.selfCheckFailures + ' 条');
+    L.push('');
+    L.push('说明,材料吸声系数取自公开资料的典型参考值，不代表任何具体产品；所有数字由本页输入算出。');
+    download(SLUG + '-导出.csv', '\ufeff' + L.join('\r\n'), 'text/csv;charset=utf-8');
+  }
+
+  function md() {
+    const r = last;
+    const L = [];
+    L.push('# ' + TITLE + ' · 导出（v' + VERSION + '）');
+    L.push('');
+    L.push('- 房间：' + r.input.L + ' × ' + r.input.W + ' × ' + r.input.H + ' m（' + r.geometry.V.toFixed(2) + ' m³，内表面积 ' + r.geometry.totalSurface.toFixed(2) + ' m²）');
+    L.push('- 500 Hz 混响时间：**' + A.fmtRT(r.rt60[2]) + ' s**（' + r.verdictLabel + '）；目标 ' + r.input.targetRT60 + ' s');
+    L.push('- 目标吸声量 ' + r.required.A_target.toFixed(2) + ' m²，当前 ' + r.absorption.total[2].toFixed(2) + ' m²，**还需补 ' + r.required.need.toFixed(2) + ' m²**');
+    L.push('');
+    L.push('## 六段混响时间');
+    L.push('');
+    L.push('| 频段 | RT60 (s) | 总吸声量 (m²) | 平均吸声系数 |');
+    L.push('|---|---|---|---|');
+    r.bands.forEach((f, i) => L.push('| ' + f + ' Hz | ' + r.rt60[i].toFixed(3) + ' | ' + r.absorption.total[i].toFixed(2) + ' | ' + (r.absorption.total[i] / r.geometry.totalSurface).toFixed(3) + ' |'));
+    L.push('');
+    L.push('## 逐面材料（500 Hz）');
+    L.push('');
+    L.push('| 面 | 材料 | 面积 (m²) | 吸声系数 | 吸声量 (m²) |');
+    L.push('|---|---|---|---|---|');
+    A.surfaceRows().forEach((s) => {
+      const row = r.absorption.bySurface[s.key];
+      L.push('| ' + s.name + ' | ' + ((A.matById(r.input.materials[s.key]) || {}).name || '') + ' | ' + row.area.toFixed(2) + ' | ' + row.coeff[2].toFixed(2) + ' | ' + row.absorb[2].toFixed(2) + ' |');
+    });
+    r.absorption.furniture.forEach((f) => L.push('| 家具：' + f.name + ' | ' + f.materialName + ' | ' + f.area.toFixed(2) + ' | ' + f.coeff[2].toFixed(2) + ' | ' + f.absorb[2].toFixed(2) + ' |'));
+    L.push('| 吸声板 | ' + ((A.matById(r.input.panel.material) || {}).name || '') + ' | ' + r.input.panel.area.toFixed(2) + ' | ' + r.absorption.panelCoeff[2].toFixed(2) + ' | ' + r.absorption.panel[2].toFixed(2) + ' |');
+    L.push('');
+    L.push('## 驻波（轴向模式，≤ ' + A.MODE_MAX_HZ + ' Hz：' + r.modes.length + ' 条模式 / ' + r.modesByFreq.length + ' 个不同频率）');
+    L.push('');
+    L.push('| 频率 (Hz) | 下标 (nx,ny,nz) | 同频模式数 | 参与方向数 |');
+    L.push('|---|---|---|---|');
+    r.modes.forEach((m) => L.push('| ' + m.f.toFixed(1) + ' | ' + m.nx + ',' + m.ny + ',' + m.nz + ' | ' + m.deg + ' | ' + m.axisCount + ' |'));
+    L.push('');
+    L.push('## 单点指标');
+    L.push('');
+    L.push('- Schroeder 频率：' + r.schroeder.toFixed(1) + ' Hz（低于它按一个个驻波看）');
+    L.push('- 临界距离：' + r.criticalDistance.toFixed(2) + ' m（0.141·√A，Q=1）');
+    L.push('- Schroeder 频率以下的模态总数（Weyl 口径）：' + r.modalCountAtSchroeder.toFixed(0));
+    L.push('- ' + r.gapRange[0] + '–' + r.gapRange[1] + ' Hz 内间距 ≥ ' + r.gapMinHz + ' Hz 的空档：' + r.gaps.list.length + ' 处');
+    L.push('');
+    L.push('## 达到目标的处方（500 Hz 口径）');
+    L.push('');
+    r.plan.options.forEach((o) => L.push('- ' + o.label + '：' + ((o.area !== null && isFinite(o.area)) ? o.area.toFixed(2) + ' m²' : '没有解') + (o.note ? '（' + o.note + '）' : '')));
+    L.push('');
+    L.push('## 自检');
+    L.push('');
+    r.checks.forEach((c) => L.push('- ' + (c.ok ? '✓' : '×') + ' ' + c.name + (c.detail ? '（' + c.detail + '）' : '')));
+    L.push('');
+    L.push('> 材料吸声系数取自公开资料的典型参考值，可逐项改写，不代表任何具体产品；全部数字由上面这份输入算出，未联网、未实测。');
+    download(SLUG + '-导出.md', L.join('\n'), 'text/markdown;charset=utf-8');
+  }
+
+  function jsonBackup() {
+    const inp = readInputs();
+    const payload = { app: SLUG, version: VERSION, savedAt: new Date().toISOString(), input: inp };
+    download(SLUG + '-备份.json', JSON.stringify(payload, null, 2), 'application/json');
+    return payload;
+  }
+
+  /* 结果卡 1080×1350：数字全部来自 last */
+  function png() {
+    const r = last;
+    const cv = document.createElement('canvas');
+    cv.width = 1080; cv.height = 1350;
+    const g = cv.getContext('2d');
+    g.fillStyle = '#f5f2ea'; g.fillRect(0, 0, 1080, 1350);
+    g.fillStyle = '#12303a';
+    g.font = '700 46px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillText(TITLE, 64, 96);
+    g.font = '24px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillStyle = '#3f5b66';
+    g.fillText('房间 ' + r.input.L + ' × ' + r.input.W + ' × ' + r.input.H + ' m · ' + r.geometry.V.toFixed(2) + ' m³ · ' + r.geometry.totalSurface.toFixed(1) + ' m²', 64, 138);
+
+    /* 主结论卡 */
+    g.fillStyle = '#0f6a72'; roundRect(g, 64, 176, 952, 210, 18); g.fill();
+    g.fillStyle = '#ffffff';
+    g.font = '24px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillText('500 Hz 混响时间（目标 ' + r.input.targetRT60.toFixed(2) + ' s）', 96, 226);
+    g.font = '800 92px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillText(A.fmtRT(r.rt60[2]) + ' s', 96, 330);
+    g.font = '30px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillText('判定：' + r.verdictLabel, 600, 330);
+
+    /* 六段 */
+    let y = 440;
+    g.fillStyle = '#12303a';
+    g.font = '700 28px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillText('六段混响时间', 64, y);
+    y += 22;
+    const maxRT = Math.max.apply(null, r.rt60);
+    r.bands.forEach((f, i) => {
+      y += 44;
+      g.fillStyle = f === 500 ? '#0b4f56' : '#3f5b66';
+      g.font = (f === 500 ? '700 ' : '') + '26px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+      g.fillText(f + ' Hz', 64, y + 22);
+      const w = maxRT > 0 ? (r.rt60[i] / maxRT) * 620 : 0;
+      g.fillStyle = f === 500 ? '#0f6a72' : '#a9c3c8';
+      g.fillRect(220, y, w, 26);
+      g.fillStyle = '#12303a';
+      g.font = '700 26px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+      g.fillText(r.rt60[i].toFixed(3) + ' s', 860, y + 22);
+    });
+
+    /* 处方 */
+    y += 78;
+    g.fillStyle = '#12303a';
+    g.font = '700 28px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillText('要压到目标还需要', 64, y);
+    y += 52;
+    g.font = '800 64px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillStyle = '#b8560f';
+    g.fillText(r.required.need > 0 ? r.required.need.toFixed(2) + ' m² 等效吸声量' : '已经达标', 64, y);
+    y += 48;
+    g.fillStyle = '#3f5b66';
+    g.font = '24px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillText('当前 ' + r.absorption.total[2].toFixed(2) + ' m² · 目标 ' + r.required.A_target.toFixed(2) + ' m²（500 Hz 口径）', 64, y);
+    y += 46;
+    const optTxt = function (o, tail) {
+      if (!o) return '没有解';
+      return (o.area !== null && isFinite(o.area)) ? (o.area.toFixed(1) + ' m²' + (tail || '')) : '没有解（' + (o.note || '') + '）';
+    };
+    wrapText(g, '直接加 50 mm 多孔吸声板：约 ' + optTxt(r.plan.options[1]) +
+      '；地面换中厚地毯：' + optTxt(r.plan.options[2], '（地面 ' + r.absorption.areas.floor.toFixed(1) + ' m²）'),
+      '24px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif', 952, 64, y, 32, '#3f5b66');
+
+    /* 关键证据 */
+    y += 120;
+    g.fillStyle = '#12303a';
+    g.font = '700 28px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillText('低频在哪儿堆着', 64, y);
+    y += 40;
+    g.font = '24px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillStyle = '#3f5b66';
+    const top = r.modesByFreq.slice(0, 6).map((m) => m.f.toFixed(1)).join(' / ');
+    g.fillText('前六个轴向模式：' + top + ' Hz（' + r.modes.length + ' 条模式 / ' + r.modesByFreq.length + ' 个频率）', 64, y);
+    y += 34;
+    g.fillText('Schroeder 频率 ' + r.schroeder.toFixed(0) + ' Hz · 临界距离 ' + r.criticalDistance.toFixed(2) + ' m · 空档 ' + r.gaps.list.length + ' 处', 64, y);
+
+    y += 56;
+    g.fillStyle = '#6d8590';
+    g.font = '21px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    wrapText(g, '材料吸声系数取自公开资料的典型参考值，可逐项改写，不代表任何具体产品；全部数字由同一套引擎算出，未联网、未实测。',
+      '21px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif', 952, 64, y, 30, '#6d8590');
+    g.fillText('自检 ' + r.checks.length + ' 条 / 未过 ' + r.selfCheckFailures + ' 条 · ' + new Date().toISOString().slice(0, 10), 64, 1306);
+
+    cv.toBlob((blob) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = SLUG + '-结果卡.png';
+      document.body.appendChild(a); a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+    }, 'image/png');
+  }
+
+  function roundRect(g, x, y, w, h, r) {
+    g.beginPath();
+    g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r);
+    g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    g.lineTo(x + r, y + h); g.quadraticCurveTo(x, y + h, x, y + h - r);
+    g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath();
+  }
+  /* 按 measureText 折行 + 限行，行首不留标点 */
+  function wrapText(g, text, font, maxW, x, y, lh, color) {
+    g.font = font; g.fillStyle = color;
+    const noLead = '，。、；：！？）」』%';
+    let line = '', lines = 0;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      const t = line + ch;
+      if (g.measureText(t).width > maxW && line) {
+        if (noLead.indexOf(ch) >= 0) { line = t; continue; }
+        g.fillText(line, x, y + lines * lh); lines++; line = ch;
+        if (lines >= 4) return y + lines * lh;
+      } else line = t;
+    }
+    if (line) { g.fillText(line, x, y + lines * lh); lines++; }
+    return y + lines * lh;
+  }
+
+  /* ───────── 保存与恢复 ───────── */
+  function save() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({ version: VERSION, savedAt: new Date().toISOString(), input: readInputs() }));
+      $('saveinfo').innerHTML = '已保存到本机（' + new Date().toLocaleString('zh-CN') + '）。刷新页面会自动读回；换设备用「导出 JSON 备份」。';
+    } catch (e) {
+      $('saveinfo').innerHTML = '<span class="warn">保存失败：' + esc(String(e && e.message || e)) + '</span>';
+    }
+  }
+  function restore() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (!raw) { $('saveinfo').innerHTML = '本机还没有保存过的输入。'; return false; }
+      const o = JSON.parse(raw);
+      writeInputs(o.input);
+      $('saveinfo').innerHTML = '已从本机读回上次保存的输入（' + new Date(o.savedAt).toLocaleString('zh-CN') + '）。';
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* ───────── 初始化 ───────── */
+  function init() {
+    /* 静态下拉：吸声板材料、安装面（六个面的材料下拉由 render 逐行生成） */
+    $('p-pmat').innerHTML = A.materialRows().map((m) => '<option value="' + m.id + '">' + esc(m.name) + '</option>').join('');
+    $('p-psurf').innerHTML = A.surfaceRows().map((s) => '<option value="' + s.key + '">' + esc(s.name) + '</option>').join('');
+    writeInputs(A.defaults());
+    restore();
+    /* 场景按钮 */
+    const sc = $('scen');
+    A.scenarios().forEach((s) => {
+      const b = document.createElement('button');
+      b.className = 'sm'; b.textContent = s.label; b.dataset.k = s.key;
+      b.addEventListener('click', () => { writeInputs(Object.assign(A.defaults(), s.over)); render(); });
+      sc.appendChild(b);
+    });
+    document.querySelectorAll('#steps button').forEach((b) => b.addEventListener('click', () => goto(b.dataset.v)));
+    $('b-next1').addEventListener('click', () => goto('materials'));
+    $('b-next2').addEventListener('click', () => goto('extras'));
+    $('b-back2').addEventListener('click', () => goto('inputs'));
+    $('b-back3').addEventListener('click', () => goto('materials'));
+    $('b-see').addEventListener('click', () => { render(); goto('extras'); });
+    $('b-add').addEventListener('click', () => { addFurnitureRow({ name: '软装', material: 'upholstered', area: 2 }); render(); });
+    $('b-reset').addEventListener('click', () => { writeInputs(A.defaults()); render(); });
+    $('b-save').addEventListener('click', save);
+    $('b-import').addEventListener('click', () => $('f-import').click());
+    $('f-import').addEventListener('change', (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      const fr = new FileReader();
+      fr.onload = () => {
+        try {
+          const o = JSON.parse(String(fr.result));
+          writeInputs(o.input || o);
+          render();
+          $('saveinfo').innerHTML = '已导入备份（' + esc(f.name) + '）。';
+        } catch (err) { $('saveinfo').innerHTML = '<span class="warn">导入失败：文件不是本页导出的备份</span>'; }
+      };
+      fr.readAsText(f);
+    });
+    $('b-csv').addEventListener('click', () => { render(); csv(); });
+    $('b-md').addEventListener('click', () => { render(); md(); });
+    $('b-json').addEventListener('click', () => { render(); jsonBackup(); });
+    $('b-png').addEventListener('click', () => { render(); png(); });
+
+    FIELDS.forEach((k) => { const el = $(IDS[k]); if (el) el.addEventListener('change', () => { render(); }); });
+    /* 注意：不能写成 addEventListener('change', render) —— 那样事件对象会被当成 render(override)
+       传进去，render 拿到一个 Event 当结果，r.ok 是 undefined，于是走进错误分支并去读 r.errors。
+       本轮就是在这里踩的坑（G2 改吸声板面积时整页崩，页面还不显示任何错误）。
+       所有监听一律包一层，保证 render 只拿到 undefined。 */
+    ['p-panel', 'p-pmat', 'p-psurf', 'p-ll', 'p-lw'].forEach((id) => $(id).addEventListener('change', () => render()));
+    document.querySelectorAll('.c-band').forEach((el) => el.addEventListener('change', () => { render(); syncMaterialNotes(); }));
+
+    /* 材料表里切换选择后要刷新「自定义」提示 */
+    $('mat-body').addEventListener('change', syncMaterialNotes);
+
+    render();
+    goto('inputs');
+  }
+
+  window.__app = {
+    render: render, writeInputs: writeInputs, readInputs: readInputs, goto: goto,
+    get last() { return last; }, get counter() { return counter; },
+    csv: csv, md: md, jsonBackup: jsonBackup, png: png, save: save, restore: restore,
+    addFurnitureRow: addFurnitureRow, TITLE: TITLE, VERSION: VERSION, SLUG: SLUG,
+  };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+
+</script>
+</body>
+</html>

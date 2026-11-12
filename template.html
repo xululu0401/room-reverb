@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>房间的混响时间 · 混响、驻波与要贴多少吸声材料</title>
+<meta name="description" content="填房间长宽高与六个面的材料，算各频段混响时间、低频驻波堆在哪些频率上、要补多少等效吸声量才能压到目标值。">
+<style>
+:root{
+  --ink:#12303a; --ink2:#3f5b66; --ink3:#6d8590; --line:#d7e2e6;
+  --paper:#f4f1e9; --card:#ffffffee; --teal:#0f6a72; --teal-d:#0b4f56; --orange:#b8560f;
+  --warnbg:#fdf3e6; --okbg:#eef6f1; --rad:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper); color:var(--ink);
+  font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:18px 14px 64px}
+header.top{border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:14px}
+h1{font-size:23px;line-height:1.3;margin:0 0 6px;letter-spacing:.3px}
+.sub{color:var(--ink2);font-size:13.5px}
+.sub b{color:var(--teal-d)}
+.tagline{margin-top:8px;font-size:13px;color:var(--ink3)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--rad);padding:14px;min-width:0}
+.card h2{font-size:14px;margin:0 0 10px;letter-spacing:.5px;color:var(--ink2);font-weight:700;display:flex;align-items:center;gap:8px}
+.card h2 .n{display:inline-flex;width:18px;height:18px;border-radius:50%;background:var(--ink);color:#fff;
+  font-size:11px;align-items:center;justify-content:center;flex:0 0 auto}
+.field{margin-bottom:11px}
+.field label{display:block;font-size:12.5px;color:var(--ink2);margin-bottom:4px}
+.field .hint{font-size:11.5px;color:var(--ink3);margin-top:3px;line-height:1.45}
+input[type=number],input[type=text],select{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:7px;
+  font:inherit;font-size:14px;background:#fff;color:var(--ink)}
+input[type=number]:focus,input[type=text]:focus,select:focus{outline:2px solid #0f6a7233;border-color:var(--teal)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.btnrow{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+button{font:inherit;font-size:13px;padding:7px 11px;border-radius:7px;border:1px solid var(--line);
+  background:#fff;color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--teal);color:var(--teal-d)}
+button.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+button.primary:hover{background:var(--teal-d);color:#fff}
+button.sm{font-size:12px;padding:5px 9px}
+.err{background:#fdecec;border:1px solid #e8b4b4;color:#8d1f1f;border-radius:8px;padding:9px 11px;margin-bottom:11px;font-size:13px}
+.err ul{margin:5px 0 0;padding-left:18px}
+.hidden{display:none !important}
+.only-sm{display:none}
+.muted{color:var(--ink3)}
+.warn{color:#8a3f14}
+.strong{font-weight:700}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.nm{white-space:nowrap}
+.nm2{white-space:normal}
+
+/* 步骤条 */
+#steps{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+#steps button{background:#fff}
+#steps button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+
+/* 场景 */
+.scen{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+
+/* 结论票 */
+.ticket{background:linear-gradient(180deg,#0f6a72,#0b4f56);color:#fff;border-radius:var(--rad);padding:15px 16px;
+  display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between}
+.ticket .bigcap{font-size:12.5px;opacity:.85;margin-bottom:2px}
+.ticket .big{font-size:54px;line-height:1.05;font-weight:800;letter-spacing:-1.5px}
+.ticket .side{font-size:13px;opacity:.95;text-align:right;line-height:1.75}
+.ticket .side b{font-size:15px}
+.pill{display:inline-block;padding:1px 9px;border-radius:20px;font-size:12.5px;font-weight:700;vertical-align:2px}
+.pill.v-draggy{background:#f6c9a8;color:#6b2f05}
+.pill.v-near{background:#f3e2b0;color:#6b5305}
+.pill.v-dry{background:#bfe3cd;color:#1d5c38}
+.oneliner{background:#fff;border:1px solid var(--line);border-top:none;border-radius:0 0 var(--rad) var(--rad);
+  padding:10px 14px;font-size:13.5px;color:var(--ink2);margin-bottom:14px}
+.oneliner b{color:var(--orange)}
+
+/* 累积条 */
+.bar{width:120px}
+.bar span{display:block;height:9px;border-radius:5px;background:var(--teal);min-width:1px}
+.pbar{height:12px;border-radius:7px;background:#e6e2d8;overflow:hidden;margin:7px 0 4px}
+.pbar span{display:block;height:100%;background:linear-gradient(90deg,#0f6a72,#3f9aa2);width:0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:13px}
+.kv .k{color:var(--ink3)}
+.kv .v{text-align:right;font-variant-numeric:tabular-nums}
+.big2{font-size:26px;font-weight:800;color:var(--teal-d);font-variant-numeric:tabular-nums}
+.mini{font-size:12.5px;color:var(--ink3);line-height:1.55}
+.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:8px;max-width:100%;min-width:0}
+table{border-collapse:collapse;width:100%;min-width:max-content;font-size:13.5px;font-variant-numeric:tabular-nums}
+table.fit{min-width:0}
+th,td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{background:#f0ede4;color:var(--ink2);font-weight:600;font-size:12.5px}
+tbody tr:nth-child(even){background:#fbfaf6}
+tr.sumrow td{background:#eef2f1 !important;font-weight:600}
+tr.now td{background:#e8f2f2 !important;box-shadow:inset 3px 0 0 var(--orange)}
+td.bar{padding:4px 9px}
+td.bar span{display:block;height:9px;border-radius:5px;background:#7fb3ba;min-width:1px}
+.notes{list-style:none;padding:0;margin:0;font-size:12.5px}
+.notes li{padding:6px 9px;border-radius:7px;margin-bottom:5px;background:#f7f7f4;border:1px solid var(--line);color:var(--ink2)}
+.notes li.warn{background:var(--warnbg);border-color:#eccfa8;color:#7a3d09}
+.checks{display:grid;grid-template-columns:1fr;gap:3px;font-size:12.5px}
+.checks .c{display:flex;gap:7px;align-items:flex-start}
+.checks .m{flex:0 0 auto;width:15px;height:15px;border-radius:50%;font-size:10px;color:#fff;display:flex;
+  align-items:center;justify-content:center;margin-top:3px}
+.checks .m.p{background:#2b7a52}.checks .m.f{background:#b03030}
+.checks .dt{color:var(--ink3);font-variant-numeric:tabular-nums}
+footer.bound{margin-top:18px;border-top:1px solid var(--line);padding-top:12px;font-size:12.5px;color:var(--ink3);line-height:1.75}
+footer.bound b{color:var(--ink2)}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.grid2>*{min-width:0}
+.mtgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.mtbox{border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:#fbfaf6}
+.mtbox .cap{font-size:11.5px;color:var(--ink3)}
+.mtbox .val{font-size:20px;font-weight:800;color:var(--teal-d);font-variant-numeric:tabular-nums;margin:2px 0}
+.mtbox .ex{font-size:11.5px;color:var(--ink3);line-height:1.5}
+@media (max-width:900px){
+  .grid2{grid-template-columns:1fr}
+  h1{font-size:20px}
+  .ticket .big{font-size:44px}
+  .ticket .side{text-align:left}
+}
+@media (max-width:640px){
+  .row3{grid-template-columns:1fr 1fr}
+}
+@media (max-width:520px){
+  /* 窄屏优先保住结论列：把「总吸声量 / 平均吸声系数 / cos / 独立吸声体之外的列」收进
+     —— 这些量在 CSV 与 Markdown 导出里都有，不留在这里也不丢信息。
+     收起后表格宽度落回可用宽度内，不必再靠横向滚动，结论列永远在第一屏。 */
+  table.fit th.opt, table.fit td.opt{display:none}
+  .hide-sm{display:none}
+  .only-sm{display:inline}
+  table.fit{min-width:0;width:100%}
+  table.fit th, table.fit td{padding:5px 5px;font-size:12.5px}
+}
+@media (max-width:420px){
+  .wrap{padding:12px 9px 56px}
+  .ticket{padding:12px}
+  .ticket .big{font-size:38px}
+  .row2,.row3{grid-template-columns:1fr}
+  table{font-size:12.5px}
+  th,td{padding:5px 6px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>房间的混响时间</h1>
+    <div class="sub">在屋里录一段话、摆一对音箱，总觉得声音拖、低频嗡嗡的 —— 这不是耳朵的问题，是<b>房间</b>的问题。
+      填房间尺寸和六个面的材料，算清三件事：<b>它把声音拖多久</b>（各频段混响时间）、<b>低频堆在哪些频率上</b>（驻波）、<b>要补多少吸声材料</b>才压得到目标。</div>
+    <div class="tagline">全部由你填的数字算出来：不联网、不测声、不内置任何产品参数、不评价任何器材、不给选购建议。材料吸声系数是<b>公开资料的典型参考值</b>且可逐项改写；默认场景是<b>虚构示例</b>。</div>
+  </header>
+
+  <div id="errbox" class="err hidden" role="alert"></div>
+  <div class="scen" id="scen"></div>
+
+  <div id="steps">
+    <button data-v="inputs" class="on">1 · 房间</button>
+    <button data-v="materials">2 · 六个面的材料</button>
+    <button data-v="extras">3 · 家具 / 吸声板（可选）</button>
+  </div>
+
+  <!-- ═══ 第 1 步：房间 ═══ -->
+  <section id="step-inputs">
+    <div class="card">
+      <h2><span class="n">1</span>房间与目标</h2>
+      <div class="row3">
+        <div class="field">
+          <label for="p-L">长（m）</label>
+          <input type="number" id="p-L" step="any" min="1.5" max="30">
+        </div>
+        <div class="field">
+          <label for="p-W">宽（m）</label>
+          <input type="number" id="p-W" step="any" min="1.5" max="30">
+        </div>
+        <div class="field">
+          <label for="p-H">高（m）</label>
+          <input type="number" id="p-H" step="any" min="1.5" max="12">
+        </div>
+      </div>
+      <div class="field">
+        <label for="p-target">目标混响时间（s）</label>
+        <input type="number" id="p-target" step="any" min="0.1" max="2">
+        <div class="hint">这是<b>你自己定的目标</b>，本页不宣称任何标准值。参考量级：小录音间常在 0.2–0.4 s，客厅常在 0.4–0.6 s —— 但这只是常见做法，不是标准。</div>
+      </div>
+      <div class="field">
+        <label for="p-spk">音箱到听音位的距离（m）</label>
+        <input type="number" id="p-spk" step="any" min="0.3" max="10">
+        <div class="hint">只用来算等边三角形的音箱间距（×√3）与和临界距离作对照，<b>不是摆位建议</b>。</div>
+      </div>
+      <div class="btnrow"><button class="primary" id="b-next1">下一步：填六个面的材料</button></div>
+    </div>
+  </section>
+
+  <!-- ═══ 第 2 步：材料 ═══ -->
+  <section id="step-materials" class="hidden">
+    <div class="card">
+      <h2><span class="n">2</span>六个面各是什么材料</h2>
+      <div class="tblwrap"><table id="mat-tbl" class="fit">
+        <thead><tr><th>面</th><th>材料</th><th>面积 m²</th><th>500 Hz 系数</th><th>吸声量 m²</th></tr></thead>
+        <tbody id="mat-body"></tbody>
+      </table></div>
+      <div class="mini" id="custom-note" style="margin-top:7px">
+        你选了「自定义吸声系数」—— 那六个数值在下面的「高级」里改；那是你自己填的值，本页不背书。
+      </div>
+      <div class="pbar"><span id="mat-bar"></span></div>
+      <div class="mini" id="mat-bar-txt">—</div>
+      <div class="kv" style="margin-top:9px">
+        <div class="k">当前总吸声量（500 Hz）</div><div class="v strong" id="mat-total">—</div>
+        <div class="k">达到目标需要的吸声量</div><div class="v" id="mat-target">—</div>
+        <div class="k">还差</div><div class="v strong" id="mat-gap">—</div>
+        <div class="k">当前 500 Hz 混响时间</div><div class="v strong" id="mat-rt">—</div>
+      </div>
+      <div class="btnrow">
+        <button id="b-back2">上一步</button>
+        <button class="primary" id="b-next2">下一步：家具与吸声板</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 第 3 步：家具与吸声板 ═══ -->
+  <section id="step-extras" class="hidden">
+    <div class="grid2">
+      <div class="card">
+        <h2><span class="n">3a</span>地面/靠墙的大件软装</h2>
+        <div class="tblwrap"><table id="furn" class="fit">
+          <thead><tr><th>名称</th><th>按什么材料算</th><th>等效面积 m²</th><th></th></tr></thead>
+          <tbody id="furn-body"></tbody>
+        </table></div>
+        <div class="mini" id="f-empty" style="margin-top:6px">还没有软装 —— 硬装房间里家具其实是很主要的吸声体，别漏掉。</div>
+        <div class="mini" style="margin-top:6px">口径：<b>等效吸声 = 等效面积 × 该材料系数</b>。「等效面积」填你估计的<b>受声投影面积</b>（例如沙发朝房间那一面），不是体积。</div>
+        <div class="kv" style="margin-top:9px"><div class="k">软装合计吸声量（500 Hz）</div><div class="v strong" id="fu-total">—</div></div>
+        <div class="btnrow"><button class="sm" id="b-add">加一件</button></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">3b</span>吸声板</h2>
+        <div class="row3">
+          <div class="field">
+            <label for="p-panel">面积（m²）</label>
+            <input type="number" id="p-panel" step="any" min="0" max="200">
+          </div>
+          <div class="field">
+            <label for="p-pmat">什么板</label>
+            <select id="p-pmat"></select>
+          </div>
+          <div class="field">
+            <label for="p-psurf">装在哪一面</label>
+            <select id="p-psurf"></select>
+          </div>
+        </div>
+        <div class="mini" id="pa-hint"></div>
+        <div class="kv" style="margin-top:9px"><div class="k">吸声板贡献（500 Hz）</div><div class="v strong" id="pa-total">—</div></div>
+        <div class="field" style="margin-top:11px">
+          <label>听音位（留空 = 房间中心）</label>
+          <div class="row2">
+            <input type="number" id="p-ll" step="any" min="0" placeholder="距长边起算墙 m">
+            <input type="number" id="p-lw" step="any" min="0" placeholder="距短边起算墙 m">
+          </div>
+          <div class="hint">用来判断听音位落在第 1 阶驻波的压力腹点还是节点上。</div>
+        </div>
+        <div class="btnrow">
+          <button id="b-back3">上一步</button>
+          <button class="primary" id="b-see">看结果</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2><span class="n">3c</span>高级：自定义吸声系数（六段，0–1）</h2>
+      <div class="mini" style="margin-bottom:7px">只有在材料里选了「自定义」时才生效。想用自己查到的数值算，就填在这里 —— 本页不核对、不背书。</div>
+      <div class="tblwrap"><table class="fit">
+        <thead><tr><th>125 Hz</th><th>250 Hz</th><th>500 Hz</th><th>1 kHz</th><th>2 kHz</th><th>4 kHz</th></tr></thead>
+        <tbody><tr>
+          <td><input class="c-band" type="number" step="any" min="0" max="1"></td>
+          <td><input class="c-band" type="number" step="any" min="0" max="1"></td>
+          <td><input class="c-band" type="number" step="any" min="0" max="1"></td>
+          <td><input class="c-band" type="number" step="any" min="0" max="1"></td>
+          <td><input class="c-band" type="number" step="any" min="0" max="1"></td>
+          <td><input class="c-band" type="number" step="any" min="0" max="1"></td>
+        </tr></tbody>
+      </table></div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2><span class="n">3d</span>存、换、导出</h2>
+      <div class="btnrow">
+        <button class="primary" id="b-save">保存到本机</button>
+        <button id="b-reset">恢复默认</button>
+        <button id="b-import">导入备份</button>
+        <input type="file" id="f-import" accept=".json,application/json" class="hidden">
+      </div>
+      <div class="btnrow">
+        <button class="sm" id="b-csv">下载 CSV</button>
+        <button class="sm" id="b-md">下载 Markdown</button>
+        <button class="sm" id="b-json">导出 JSON 备份</button>
+        <button class="sm" id="b-png">下载结果卡 PNG</button>
+      </div>
+      <div class="hint" id="saveinfo" style="margin-top:7px"></div>
+    </div>
+  </section>
+
+  <!-- ═══ 结果：房间声学体检报告 ═══ -->
+  <div id="results" class="hidden" style="margin-top:16px">
+    <div class="ticket" id="ticket">
+      <div>
+        <div class="bigcap">500 Hz 混响时间</div>
+        <div class="big"><span id="t-rt">—</span> <span style="font-size:22px;font-weight:600">s</span></div>
+      </div>
+      <div class="side">
+        <div>判定：<span class="pill" id="t-verdict">—</span>（本页的显示分组，不是标准）</div>
+        <div>目标 <b id="t-target">—</b> · 还差 <b id="t-need">—</b></div>
+        <div>房间 <b id="t-dims">—</b> · <b id="t-volume">—</b> · 吸声量 <b id="t-abs">—</b></div>
+      </div>
+    </div>
+    <div class="oneliner" id="t-line">—</div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2><span class="n">A</span>六段混响时间</h2>
+        <div class="tblwrap"><table id="t-band" class="fit">
+          <thead><tr><th>频段</th><th>混响时间</th><th class="opt">总吸声量 m²</th><th class="opt">平均吸声系数</th><th>相对长度</th></tr></thead>
+          <tbody id="band-body"></tbody>
+        </table></div>
+        <div class="mini" style="margin-top:7px">条形长度只是六段之间的相对比例（最长的记满格），不代表绝对好坏。</div>
+      </div>
+      <div class="card">
+        <h2><span class="n">B</span>单点指标</h2>
+        <div class="mtgrid">
+          <div class="mtbox"><div class="cap">Schroeder 频率</div><div class="val" id="mt-sch">—</div><div class="ex" id="mt-sch-note">—</div></div>
+          <div class="mtbox"><div class="cap">它以下的模态总数（Weyl 口径）</div><div class="val" id="mt-count">—</div><div class="ex" id="mt-count-note">—</div></div>
+          <div class="mtbox"><div class="cap">临界距离</div><div class="val" id="mt-cd">—</div><div class="ex" id="mt-cd-note">—</div></div>
+          <div class="mtbox"><div class="cap">内表面积 / 棱长合计</div><div class="val"><span id="mt-surface">—</span></div><div class="ex">棱长合计 <span id="mt-edge">—</span>（Weyl 公式用）</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2><span class="n">C</span>低频堆在哪儿：驻波清单与频率尺</h2>
+      <div id="mode-ruler"></div>
+      <div class="kv" style="margin-top:6px">
+        <div class="k">≤300 Hz 的轴向模式</div><div class="v strong" id="mode-count">—</div>
+        <div class="k">最低一阶</div><div class="v" id="mode-first">—</div>
+        <div class="k">50–120 Hz 内的空档（间距 ≥ 12 Hz）</div><div class="v strong" id="gap-count">—</div>
+      </div>
+      <div class="mini" id="gap-list" style="margin-top:6px"></div>
+      <div class="tblwrap" style="margin-top:10px;max-height:340px;overflow-y:auto"><table id="t-mode" class="fit">
+        <thead><tr><th>频率 Hz</th><th>同一频率上有几条</th><th class="opt">参与方向数</th><th class="opt">对应的下标 nx,ny,nz</th></tr></thead>
+        <tbody id="mode-body"></tbody>
+      </table></div>
+      <div class="mini" style="margin-top:7px">只列<b>轴向</b>模式（下标里只有一个非零），不算切向/斜向。同一张表按<b>频率</b>归并：一个频率一行，括号里列出所有落到这个频率上的下标组合。频率尺上柱高 = 同一频率上有几条模式、橙色 = 三个方向同时参与。空档阈值 12 Hz 与 50–120 Hz 这个范围都是<b>本页的设计选择</b>，不是标准。</div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2><span class="n">D</span>听音位落在腹点还是节点</h2>
+      <div class="tblwrap"><table id="t-lm" class="fit">
+        <thead><tr><th>方向</th><th>第 1 阶频率 Hz</th><th>听音位距起算墙 m</th><th class="opt">cos(πx/L)</th><th>判定</th></tr></thead>
+        <tbody id="lm-body"></tbody>
+      </table></div>
+      <div class="kv" style="margin-top:8px">
+        <div class="k">长边方向坐标</div><div class="v" id="lm-x">—</div>
+        <div class="k">短边方向坐标</div><div class="v" id="lm-y">—</div>
+      </div>
+      <div class="mini" id="lm-note" style="margin-top:6px"></div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2><span class="n">E</span>处方：要补多少吸声量、等于多少 m²</h2>
+      <div class="kv">
+        <div class="k">目标混响时间</div><div class="v strong" id="pl-target">—</div>
+        <div class="k">目标吸声量 A = 0.161·V / RT60</div><div class="v" id="pl-atarget">—</div>
+        <div class="k">当前吸声量（500 Hz）</div><div class="v" id="pl-acur">—</div>
+        <div class="k">还需补的等效吸声量</div><div class="v strong" id="pl-need">—</div>
+      </div>
+      <div class="tblwrap" style="margin-top:10px"><table id="t-plan" class="fit">
+        <thead><tr><th>做法</th><th>需要多少</th><th>说明</th><th></th></tr></thead>
+        <tbody id="plan-body"></tbody>
+      </table></div>
+      <div class="mini" style="margin-top:7px">点「代入」会把这笔面积填进第 3 步的吸声板里并立刻重算 —— 建议直接作用于输入。
+        「直接加板」按<b>独立加进来的吸声体</b>算（面积 = 缺口 ÷ 该材料 500 Hz 系数）；「贴到某个面」按<b>替换该面原有材料</b>算（面积 = 缺口 ÷ 系数提高量），后者需要的面积往往更大。</div>
+
+      <div style="margin-top:12px">
+        <div class="mini strong" style="margin-bottom:6px">各种材料要多少 m² 才补得上这个缺口（500 Hz）</div>
+        <div class="tblwrap"><table id="t-presc" class="fit">
+          <thead><tr><th>材料</th><th>500 Hz 系数</th><th><span class="hide-sm">当独立吸声体：面积</span><span class="only-sm">独立 m²</span></th><th><span class="hide-sm">贴到长边墙（替换原面材料）：面积</span><span class="only-sm">贴墙 m²</span></th></tr></thead>
+          <tbody id="presc-body"></tbody>
+        </table></div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="mini strong" style="margin-bottom:6px">对照：如果整间房六个面都用同一种吸声处理（不是推荐，只是把量级摆出来）</div>
+        <div class="tblwrap"><table id="t-uniform" class="fit">
+          <thead><tr><th>材料</th><th>500 Hz 系数</th><th>总吸声量 m²</th><th>混响时间</th></tr></thead>
+          <tbody id="uniform-body"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2><span class="n">F</span>模型提示与自检</h2>
+      <ul class="notes">
+        <li><b>这是模型输出，不是实测。</b>Sabine 公式假设声场扩散、各面吸声均匀；小房间、强吸收、低频下这几条都不严格成立。</li>
+        <li><b>吸声系数是参考值。</b>同一种「地毯」「吸声板」在厚度、衬垫、空腔、安装方式不同时差别可以很大；表里给的是公开资料的典型值，你可以逐项改（第 2 步的「自定义」）。</li>
+        <li class="warn"><b>墙面面积按净空几何算</b>（2(L+W)H），<b>没有</b>扣掉门窗洞；吸声板也<b>没有</b>扣掉被它遮住的那部分墙面原本的吸声量 —— 两处都是保守口径。</li>
+        <li><b>六个面都是长方体</b>：L 形、斜顶、圆柱形房间不在范围内，本页不猜。</li>
+        <li><b>声速取 343 m/s</b>（20 °C 空气中的常用值）；温度未建模。高频只加了很小的空气吸收项。</li>
+        <li><b>只算房间，不算器材</b>：没有音箱的频响/灵敏度/功率数据，所以本页不预测声压级，也不说「你的音箱低频能下到多少」。</li>
+        <li><b>不做隔声</b>：邻居吵不吵你、你吵不吵邻居，要靠墙体隔声量、撞击声、缝隙漏声这些数据，本页完全不涉及。</li>
+        <li><b>不做健康与法律判定</b>，也不评价任何品牌、不给购买建议。驻波在物理上消不掉，只能分散与吸收 —— 这一点页面上不会替你下结论说「处理完就好了」。</li>
+      </ul>
+      <div style="margin-top:9px;font-size:12.5px;color:var(--ink2)" id="sc-head">—</div>
+      <div class="checks" id="sc-body" style="margin-top:7px"></div>
+    </div>
+  </div>
+
+  <div class="mini" id="meta-line" style="margin-top:12px"></div>
+
+  <footer class="bound">
+    <b>公式（与页面数字同一套）</b>：V = L·W·H；A<sub>频段</sub> = Σ(每个面面积 × 该面材料在该频段的吸声系数) + 家具等效吸声 + 吸声板；
+    <b>RT60 = 0.161·V / (A + 4mV)</b>（m 为空气吸收系数，只有 2k/4k 段非零）；
+    驻波 <b>f = (343/2)·√((n<sub>x</sub>/L)² + (n<sub>y</sub>/W)² + (n<sub>z</sub>/H)²)</b>；
+    Schroeder 频率 <b>2000·√(RT60<sub>500</sub>/V)</b>；临界距离 <b>0.141·√(Q·A)</b>（Q = 1）；
+    目标吸声量 <b>A = 0.161·V / RT60<sub>目标</sub></b>。<br>
+    <b>本页不包含</b>：实测与校准、房间校正 EQ、音箱与功放的任何参数、扩散体设计、隔声（墙体/撞击声/缝隙）、
+    结构振动与空调噪声、温度湿度对声速的影响、听感与音质评价、任何产品与品牌、任何标准条款的引用。<br>
+    <b>本页不做</b>：不推荐器材、不给购买链接、不评价任何装修方案好坏、不做医学或健康判定。
+    所有默认数字与内置场景都是<b>虚构示例</b>，不代表任何真实房间、材料产品或器材。
+  </footer>
+</div>
+
+<script>
+/*CORE*/
+</script>
+<script>
+/*UI*/
+</script>
+</body>
+</html>
